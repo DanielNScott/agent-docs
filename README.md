@@ -24,8 +24,13 @@ The main file, `claude.md` is attached to Claude Code via startup hook, and it d
 
 ## Setup
 
-Add `claude.md` as a startup hook in Claude Code's global settings (`~/.claude/settings.json`):
+To use this package, you must:
 
+- Add `claude.md` as a startup hook 
+- replace `/home/dan/code/agent-docs/` with your clone path throughout
+- remove or replace specialized tool instructions (search for e.g. python3 in md files)
+
+How to configure the hook in Claude Code's global settings (`~/.claude/settings.json`):
 ```json
 {
   "hooks": {
@@ -38,5 +43,3 @@ Add `claude.md` as a startup hook in Claude Code's global settings (`~/.claude/s
   }
 }
 ```
-
-Replace `/home/dan/code/agent-docs/` above with your path to the clone of this repository.
