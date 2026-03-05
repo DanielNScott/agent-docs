@@ -2,6 +2,20 @@
 
 # Claude Instructions
 
+## Table of Contents
+- [Critical importance](#critical-importance)
+  - [Security practices](#security-practices)
+  - [Tool use preferences](#tool-use-preferences)
+  - [Git, uv, and pip](#git-uv-and-pip)
+- [Resources to consult](#resources-to-consult)
+- [Resuming a project](#resuming-a-project)
+- [Investigating another project](#investigating-another-project)
+- [Refactoring a project](#refactoring-a-project)
+- [When writing bullet lists](#when-writing-bullet-lists)
+- [Template use](#template-use)
+- [Tests](#tests)
+- [Miscellaneous requests](#miscellaneous-requests)
+
 ## Critical importance
 
 ### Security practices
@@ -125,7 +139,7 @@ Use them when any covered action is requested.
 
 ## Tests
 
-Do not run tests automatically after making code changes. Either ask if I want to run them instead, or simply wait for me to instruct you to run them.
+Do not run tests automatically after making code changes.
 
 ## Miscellaneous requests
 

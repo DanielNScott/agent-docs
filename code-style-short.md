@@ -14,7 +14,7 @@ Modular organization: simple projects use flat layouts (one file per concern), c
 - [Data Structures](#data-structures)
 - [Dependencies and Imports](#dependencies-and-imports)
 - [Documentation Files](#documentation-files)
-- [Encapsulation](#encapsulation)
+- [Encapsulation and Object-Oriented Design](#encapsulation-and-object-oriented-design)
 - [Error Handling](#error-handling)
 - [File I/O and Persistence](#file-io-and-persistence)
 - [Function Design](#function-design)

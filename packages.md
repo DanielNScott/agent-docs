@@ -2,6 +2,21 @@
 
 Principles for when and how to organize modules and sub-packages. Projects begin flat and become hierarchical only when the code demands it.
 
+## Table of Contents
+- [Flat vs. Hierarchical](#flat-vs-hierarchical)
+- [Entry Point](#entry-point)
+- [Package Role Taxonomy](#package-role-taxonomy)
+- [Visualization](#visualization)
+- [Data I/O](#data-io)
+- [Data Directory Organization](#data-directory-organization)
+- [Configuration Layering](#configuration-layering)
+- [Dependency Direction](#dependency-direction)
+- [Standard Filenames](#standard-filenames)
+- [\_\_init\_\_.py Convention](#__init__py-convention)
+- [When to Create a New Package](#when-to-create-a-new-package)
+- [Sub-Sub-Packages](#sub-sub-packages)
+- [Package Naming](#package-naming)
+
 ## Flat vs. Hierarchical
 
 Flat layout for small projects:
