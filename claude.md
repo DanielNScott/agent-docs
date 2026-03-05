@@ -114,8 +114,14 @@ Use a brief header like this one:
 
 ## Template use
 
-Please make note of the templates avaliable in the agent-docs directory, especially the commit template, the architectural decision record template, and the problem-solving-conversation template. When a commit, ADR, or conversation summary is requested, please review the template then adhere to it.
+Make note of the templates available here:
+- template-adr.md for architectural decision records
+- template-audit-bug.md for bug audits
+- template-commit.md for commit message drafts
+- template-conversation.md for conversation summaries
+- template-readme.md for README.md files
 
+Use them when any covered action is requested.
 
 ## Tests
 
