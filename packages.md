@@ -191,7 +191,7 @@ Flat if fewer than 5 data files. Otherwise mirror code separation:
 Multiple data sources subdivide data/source/ by origin. Expensive intermediates may use data/cache/.
 
 Output directories defined in configs.py as constants:
-- RESULTS_DIR, FIGURES_DIR, DATA_DIR
+- DIR_RESULTS, DIR_FIGURES, DIR_DATA (note general-to-specific naming)
 - pickle files use timestamped filenames
 - helper function loads most recent file matching a pattern
 
@@ -216,13 +216,13 @@ The following example illustrates the two-tier configuration split between infra
 
 Example configuration layering:
 ```
-configs.py              # DATA_DIR, RESULTS_DIR, feature flags
+configs.py              # DIR_DATA, DIR_RESULTS, feature flags
 generation/config.py    # LLM parameters, thresholds, batch sizes
 synthesizer/configs.py  # format templates, generation parameters
 ```
 
 This example illustrates:
-- top-level configs.py defines DATA_DIR, RESULTS_DIR, feature flags
+- top-level configs.py defines DIR_DATA, DIR_RESULTS, feature flags
 - generation/config.py defines LLM parameters, thresholds, batch sizes
 - synthesizer/configs.py defines format templates, generation parameters
 - changing top-level config affects paths; changing sub-package config affects algorithms
