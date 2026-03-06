@@ -1,8 +1,8 @@
 # Coding Guidelines
 
-Style emphasizes clarity and pragmatic simplicity over abstraction. Function-based architectures with explicit data flows, accepting moderate repetition for clarity. Code reads linearly; implementation reveals intent directly.
+Style emphasizes clarity and pragmatic simplicity over abstraction. Function-based architectures with explicit data flows. Code reads linearly; implementation reveals intent directly.
 
-Scientific computing idioms: NumPy vectorization, dictionary structures. Boolean masking, fancy indexing, and comprehensions replace loops. Type info via naming and docstrings, not annotations. Configuration centralized in dedicated modules.
+Scientific computing idioms: NumPy vectorization, dictionary structures. Boolean masking, fancy indexing, and comprehensions replace loops.
 
 Modular organization: simple projects use flat layouts (one file per concern), complex projects use hierarchical packages. Unidirectional imports from specific to general; entry points never imported.
 
@@ -232,7 +232,6 @@ def load_results():
 Mathematical constants live separately from config:
 ```python
 SEC_TO_HR = 1/3600
-FIGSIZE_FULL = [16.8, 9.55]
 ```
 
 ## Data Structures
@@ -245,15 +244,43 @@ Rules:
 
 Dictionary with descriptive keys:
 ```python
-task = {'obs': observations, 'state': latent_states, 'cp': changepoint_indicators}
+DEFAULT_PARAMS_CPT = {
+    'ntrials':  120,
+    'noise_sd': 10.0,
+    'hazard':   0.1,
+    'bnds_obs': [0 , 300],
+}
+
 ```
 
 Dataclass for parameter objects:
 ```python
 @dataclass
-class HelicopterParams:
-    n_trials: int = 120
-    hazard: float = 0.1
+class NetworkParameters:
+    # Verbosity: 0=silence, 1=reminders, 2=diagnostic
+    verbose: int = 1
+
+    # Model type: "flexible" or "changepoint"
+    model = "changepoint"
+
+    # Network architecture
+    n_rnn:      int = 600  # number of RNN neurons
+    n_patterns: int = 60   # number of encoded patterns
+    n_output:   int = 300  # number of output neurons, which correspond to the potential location index of the bucket
+
+    # Timing
+    decision_steps: int = 20   #
+    learning_steps: int = 40   #
+    learning_delay: int = 20
+
+    # Approx. width of bump attractors throughout
+    attractor_width: int = 15
+
+    # PFC noise strength
+    pfc_noise_strength: float = 0.2
+    pfc_noise_tau:      float = 5.0
+    pfc_noise_lmbda:    float = 0.25
+    ...
 ```
 
 ## Dependencies and Imports
@@ -263,25 +290,12 @@ Rules:
 - explicit imports for 5 or fewer items
 - if importing more than 5 items, use import alias (import X as Y)
 
-Example imports:
-```python
-import os, time, pickle
-import numpy as np, pandas as pd
-from configs import MULTIPROC, SAVE_FIGS, DATA_DIR
-from tasks import task_block_from_task_dict
-import model
-```
-
 ## Documentation Files
 
 Rules:
-- hierarchical with TOC
-- 3-5 paragraph intro: scope, themes, integration
-- sections: summary paragraph, bulleted guidelines, examples
-- examples preceded by: what shown, how demonstrates principle, necessary background
-- simple to complex progression
-- anti-patterns where helpful
-- minimal verbosity
+- Use templates provided
+- If no templates is relevant, iterate header-and-bullet format
+- Address why something was done before addressing how it was done
 
 ## Encapsulation and Object-Oriented Design
 
@@ -295,10 +309,9 @@ Valid reasons for classes:
 - architectural necessity (interface contracts, dependency injection)
 
 Invalid reasons for classes:
-- "organization" (use modules instead)
-- "namespace" (use module-level functions)
-- single method doing one thing (just write a function)
-- grouping unrelated utilities (use module)
+- organization (use modules and packages)
+- collections of stateless methods
+- grouping unrelated utilities
 
 Function-based default (operate on data directly):
 ```python
@@ -310,7 +323,7 @@ def compute_statistics(values):
     return np.mean(values), np.std(values)
 ```
 
-Stateful object (state justifies the class):
+Stateful object (consistent manager ontology defines API of multiple devices):
 ```python
 class GarminManager:
     def __init__(self):
@@ -329,66 +342,151 @@ class GarminManager:
 
 Tight data-method coupling (methods meaningfully belong to the data):
 ```python
-class LEIANetwork:
-    def __init__(self, n_hidden, learning_rate):
-        self.W_input = initialize_weights(n_hidden)
-        self.W_recurrent = initialize_weights(n_hidden)
-        self.state = np.zeros(n_hidden)
-        self.lr = learning_rate
+class RNN:
+    """Generic RNN layer"""
+    def __init__(self, size, W, tau=3.0, beta=1.0, bias=0.0):
+        self.state = np.zeros(size, dtype=float)
+        self.tau = tau
+        self.size = size
+        self.beta = beta
+        self.W = W
+        self.bias = bias
+        self._inv_tau = 1.0 / tau
 
-    def forward(self, input_vec):
-        # Updates self.state based on self.W_* and input
-        self.state = tanh(self.W_input @ input_vec + self.W_recurrent @ self.state)
+        self._blank_input = np.zeros(size)
+        self._buf = np.zeros(size, dtype=float)
+
+    def step(self, inputs=None):
+        """Update state using dynamics terms and optional noise"""
+        # If no input, use zeros
+        if inputs is None: inputs = self._blank_input
+
+        # Recurrent drive into buffer: buf = W @ state
+        np.dot(self.W, self.state, out=self._buf)
+
+        # Euler integration: state += (buf + inputs + bias) / tau
+        self._buf += inputs
+        self._buf += self.bias
+        self._buf *= self._inv_tau
+        self.state += self._buf
+
+        # Activation: tanh then clip negative to zero, all in-place
+        np.tanh(self.state * self.beta, out=self.state)
+
+    def reset(self, value=0.0):
+        """Reset state to initial or specified value"""
+        self.state.fill(value)
+
+    def squeeze(self):
+        """Return state for compatibility with existing code"""
         return self.state
 
-    def update_weights(self, gradient):
-        # Modifies self.W_* using self.lr
-        self.W_input -= self.lr * gradient
+    def shape(self):
+        return self.state.shape
 ```
 
-Function proliferation anti-pattern (every call needs config passed):
+Base class for enforcing contract consistency:
 ```python
-def load_config(config_path):
-    return parse_config(config_path)
+class Dynamics(ABC):
+    """
+    Environment model and internal dynamics model.
+    
+    The point of this class is to require subclasses to override cost 
+    and stateless step computation. Step and forward are then automatic.
 
-def validate_config(config, schema_path):
-    schema = load_schema(schema_path)
-    return validate(config, schema)
+    Usage:
+    1. Environments with state should use stateful step and forward methods.
+    2. Dynamics models should use stateless ones.
+    3. initialize with stateless True or False to enforce
+    """
 
-config = load_config('config.yaml')
-validate_config(config, 'schema.yaml')
-```
+    def __init__(self, stateless):
+        self.state = None
+        self.cost  = None
+        self.stateless = stateless
 
-Better (class eliminates repetition):
-```python
-class ConfigManager:
-    def __init__(self, config_path):
-        self.config = parse_config(config_path)
+    @abstractmethod
+    def cost_function(self, state):
+        """Return cost for given state. Implement vectorized version if needed."""
+        pass
 
-    def validate(self, schema_path):
-        return validate(self.config, load_schema(schema_path))
+    @abstractmethod
+    def _step_stateless(self, state, action, params=None):
+        """Take action, return (next_state, cost). Implement vectorized version if needed."""
+        pass
 
-mgr = ConfigManager('config.yaml')
-mgr.validate('schema.yaml')
-```
+    def snapshot(self):
+        """Return a snapshot of the environment's current state."""
+        return ['state', 'cost'], [self.state.copy(), self.cost]
 
-Semantic hierarchy (shared behavior justifies inheritance):
-```python
-class BaseTask:
-    def __init__(self, n_trials, noise_sd):
-        self.n_trials = n_trials
-        self.noise_sd = noise_sd
+    def reset(self, state):
+        """Useful because includes cost reset."""
+        self.state = state
+        self.cost  = self.cost_function(state)
 
-    def add_noise(self, signal):
-        return signal + np.random.normal(0, self.noise_sd, len(signal))
+    def _forward_stateless(self, state, actions, params=None):
+        """
+        Forward pass without state updating.
+        Accepts vectorized stepping from step_stateless.
 
-    def generate(self):
-        raise NotImplementedError
+        state: [state_dim] or [n_samples, state_dim]
+        actions: [action_dim, time] or [n_samples, action_dim, time]
+        """
+        # Initialize storage
+        states, costs = [state], [self.cost_function(state)]
 
-class LinearTask(BaseTask):
-    def generate(self):
-        signal = self.slope * np.arange(self.n_trials)
-        return self.add_noise(signal)
+        # Number of time steps
+        tsteps = actions.shape[-1]
+
+        # Iterate over time steps
+        for t in range(tsteps):
+            action = actions[..., t] 
+            state, cost = self._step_stateless(state, action, params)
+            
+            # Update lists
+            states.append(state)
+            costs.append(cost)
+
+        # Stack results, yielding dimensions [..., tsteps + 1]
+        return np.stack(states), np.stack(costs)
+
+    def step(self, action, params=None):
+        """Update internal state with a single action."""
+        # Check if the class was initialized as stateless
+        if self.stateless: raise RuntimeError("Trying to use stateful step on stateless model.")
+        
+        # Perform stateless step and assign
+        self.state, self.cost = self._step_stateless(self.state, action, params)
+        
+        # Return values in case needed
+        return self.state, self.cost
+
+    def forward(self, actions, params=None):
+        """Update internal state over action sequence."""
+        # Check if the class was initialized as stateless
+        if self.stateless: raise RuntimeError("Trying to use stateful step on stateless model.")
+        
+        # Perform stateless sequence of steps
+        states, costs = self._forward_stateless(self.state, actions, params)
+
+        # Assign final state and cost
+        self.state = states[..., -1] 
+        self.cost  = costs[..., -1]
+
+        # Return if needed
+        return self.state, self.cost
+
+    def query(self, state, actions, params=None):
+        """Exposed stateless forward method for external querying.
+
+        Broadcasts state to match batch dimension of actions if needed.
+        """
+        # Broadcast state if actions has batch dimension that state lacks
+        if actions.ndim == 3 and state.ndim == 1:
+            n_samples = actions.shape[0]
+            state = np.tile(state, (n_samples, 1))
+
+        return self._forward_stateless(state, actions, params)
 ```
 
 ### Anti-patterns
@@ -422,10 +520,11 @@ class Analyzer:
 ## Error Handling
 
 Rules:
-- minimal; try-except for file I/O and data loading
-- print failures, continue gracefully (insert NaN rows)
-- assertions for internal consistency
 - assume valid inputs
+- minimal, avoid proliferating try/except
+- exception: guard data I/O
+- use verbosity flags for configurable output
+- assertions for internal consistency
 
 Example (missing data file):
 ```python
@@ -438,27 +537,16 @@ except:
 ## File I/O and Persistence
 
 Rules:
-- timestamped pickles: `filename_YYYY-MM-DD-HH-MM-SS.pkl`
-- helper loads most recent timestamped file
-- CSV for human-readable data
-- SVG for figures
+- timestamp files by default: `YYYY-MM-DD-HH-MM-SS-filename.pkl`
+- consult project cache patterns and apply them
+- default to saving and re-loading long-running data generation
 
 Save with automatic timestamping:
 ```python
 def save_pickle(names, vars, filename):
     datestring = time.strftime("%Y-%m-%d-%H-%M-%S")
-    with open(f"{RESULTS_DIR}/{filename}_{datestring}.pkl", "wb") as f:
+    with open(f"{RESULTS_DIR}/{datestring}_{filename}.pkl", "wb") as f:
         pickle.dump((names, *vars), f)
-```
-
-Load most recent timestamped file:
-```python
-def load_pickle(filename, verbose=1):
-    file_list = [f for f in os.listdir(RESULTS_DIR) if f.startswith(f"{filename}_")]
-    latest_file = max(file_list, key=lambda x: os.path.getctime(os.path.join(RESULTS_DIR, x)))
-    with open(os.path.join(RESULTS_DIR, latest_file), "rb") as f:
-        loaded = pickle.load(f)
-    return {name: loaded[i+1] for i, name in enumerate(loaded[0])}
 ```
 
 ## Function Design
@@ -469,8 +557,13 @@ Rules:
 - return tuples/dicts, no input mutation
 - pure functions (no side effects beyond I/O)
 - local helpers if used once, global if reused
+- separate computation, printing, and visualization
+- encapsulate print functions and make them configurable
+- encpasulate all visualization under plot_*
+- refactor functions for abstraction when a function definition pattern repeats
+- do not package output that is not strictly required into function return
 
-Use dicts if 5 or more return variables:
+Return directly if 5 or fewer return variables:
 ```python
 def run_param_grid(tasks, n_processes=None, n_thresh=10):
     """Run model on each task using entropy threshold range."""
@@ -560,14 +653,16 @@ See `packages.md` for full package structure guidelines. Key principles: flat fo
 ## Parallel Processing
 
 Rules:
-- `multiprocessing.Pool` with `map()`/`imap_unordered()`
-- wrapper functions for arguments
+- write profile tests for high iteration loops
+- if code takes more than 5 minutes to run, attempt to parallelize
+- use `multiprocessing.Pool` with `map()`/`imap_unordered()`
+- use wrapper functions for arguments
 - config flag (`MULTIPROC`) controls parallelization
 - disable NumPy multithreading when multiprocessing
 - single-line prints for progress during iteration by default
 - gate by `if verbose > 0: print(f'Content')` by default
 
-Disable thread-level parallelism:
+Disable thread-level parallelism when using multiproc:
 ```python
 if MULTIPROC:
     os.environ['OMP_NUM_THREADS'] = '1'
@@ -578,6 +673,7 @@ if MULTIPROC:
 Rules:
 - Matplotlib
 - default figure and plot sizes unless otherwise specified
+- don't import seaborn or other extras unless strictly necessary
 - always use `plt.tight_layout()`
 - optional saving via flags
 - `plt.grid(alpha=0.3)` for readability
@@ -622,25 +718,6 @@ Rules:
 - `np.where()` for conditionals
 - `np.einsum()` for tensor operations
 
-Boolean mask with bitwise operators:
-```python
-msk = (timing['durations'] > 4) & (timing['hours'] >= 21)
-filtered_data = data[msk]
-```
-
-Vectorized operations and comprehensions:
-```python
-pe = task['obs'] - preds
-tasks = [sdata['cpt'] for sdata in subjs]
-cp_trials = np.where(task['cp'])[0]
-```
-
-Einstein summation for tensor operations:
-```python
-delta = targ - pred
-loss = torch.sqrt(torch.einsum('p,p ->', delta, delta))
-```
-
 ## Simplicity vs Functionality Trade-offs
 
 Rules:
@@ -650,12 +727,6 @@ Rules:
 - attempt to maintain flat hierarchy
 - never perform copy-paste-modify
 
-Explicit parsing without abstraction:
-```python
-year = int(start_date.split('-')[0])
-month = int(start_date.split('-')[1])
-day = int(start_date.split('-')[2])
-```
 
 Helper extracted when pattern repeats frequently:
 ```python
