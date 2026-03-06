@@ -1,14 +1,14 @@
 # Agent-docs
 
-Reusable instruction and template files for Claude Code projects.
+Reusable instruction and template files for Claude Code projects. These are a continually evolving project, and feedback on contents, best practices or your own use experiences are more than welcome.
 
 ## Motivation
 
-This repository centralizes baseline instructions, coding guidelines, and document templates for efficient reuse.
+Centralize baseline instructions, coding guidelines, and document templates for efficient reuse.
 
 ## How It Works
 
-The main file, `claude.md` is attached to Claude Code via startup hook, and it directs Claude to consult the files in this repository depending on task. Template files provide additional standardized formats for commits, architectural decision records, conversation summaries, bug audits, and READMEs.
+The main file, `claude.md` should be attached to Claude Code via startup hook. It directs Claude to consult the files in this repository depending on task. Template files provide additional standardized formats for commits, architectural decision records, conversation summaries, bug audits, and READMEs.
 
 ## Project Structure
 
@@ -26,7 +26,7 @@ The main file, `claude.md` is attached to Claude Code via startup hook, and it d
 
 To use this package, you must:
 
-- Add `claude.md` as a startup hook 
+- Add `claude.md` as a startup hook (or point to it via package level CLAUDE.md)
 - replace `/home/dan/code/agent-docs/` with your clone path throughout
 - remove or replace specialized tool instructions (search for e.g. python3 in md files)
 
