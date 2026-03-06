@@ -370,7 +370,7 @@ class RNN:
         self._buf *= self._inv_tau
         self.state += self._buf
 
-        # Activation: tanh then clip negative to zero, all in-place
+        # Activation: tanh
         np.tanh(self.state * self.beta, out=self.state)
 
     def reset(self, value=0.0):
