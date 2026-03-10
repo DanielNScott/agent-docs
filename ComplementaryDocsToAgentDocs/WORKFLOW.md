@@ -6,7 +6,15 @@ This document describes the methodology behind RepoBaseDocs — how to specify p
 
 ## 1. What is RepoBaseDocs?
 
-RepoBaseDocs is a specification framework for agent-driven software projects. It provides 8 template documents that serve two roles:
+RepoBaseDocs is a specification framework for agent-driven software projects. It provides templates at three adoption levels — use only what your project needs:
+
+| Level | Documents | Best For |
+|-------|-----------|----------|
+| **Lightweight** | CLAUDE.md + BREADCRUMBS | Scripts, utilities, small projects under ~2,000 LOC |
+| **Standard** | + PROJECT_SPEC, EXECUTION_PLAN, PROJECT_STATE | Libraries, services, multi-phase projects |
+| **Full** | + OPEN_DECISIONS, DOCS_STRATEGY, docs/plans/ | Large systems, multi-agent, months of active development |
+
+The documents serve two roles:
 
 1. **Specifications**: Planning agents author them, executing agents consume them, humans review and approve. The documents tell agents what to build, within what constraints, and with what trade-off priorities.
 2. **Institutional memory**: As agents work, they produce knowledge — gotchas, decisions, patterns. This knowledge feeds back into the specification chain so future agents do not repeat mistakes or re-litigate decisions.
@@ -17,12 +25,14 @@ Specifications tell agents what to build. Memory ([BREADCRUMBS](templates/BREADC
 
 Agents build the wrong thing when intent is unclear and specifications are incomplete. Vague instructions like "build the export system" produce technically correct code that misses the point — wrong trade-offs, wrong boundaries, wrong integration patterns. RepoBaseDocs solves this by structuring intent into consumable specifications at every level: project, phase, and task.
 
-### Two Document Tiers
+### Four Document Tiers (Standard and above)
 
-The 8 documents divide into two tiers based on their role in the agent workflow:
+At Standard adoption and above, documents are organized into tiers:
 
-- **Tier 1 — Agent Input**: Documents that executing agents read before and during work. These are the specification chain: PROJECT_SPEC, EXECUTION_PLAN, TASK_BRIEFS, OPEN_DECISIONS, BREADCRUMBS.
-- **Tier 2 — Human Dashboard & Process**: Documents maintained as output of agent work, read primarily by humans. These track reality and process: PROJECT_STATE, CLOSED_DECISION_LOG, DOCS_STRATEGY.
+- **Tier 0 — Agent Entry Point**: `CLAUDE.md` — auto-loaded by Claude Code, routes agents to status docs and gotchas.
+- **Tier 1 — Agent Input**: Documents that executing agents read before and during work. The specification chain: PROJECT_SPEC, EXECUTION_PLAN, OPEN_DECISIONS, BREADCRUMBS.
+- **Tier 2 — Human Dashboard & Process**: Documents maintained as output of agent work, read primarily by humans: PROJECT_STATE, CLOSED_DECISION_LOG, DOCS_STRATEGY.
+- **Tier 3 — Implementation Artifacts**: Design and implementation specs in `docs/plans/`. Historical build records once complete — **status lives only in EXECUTION_PLAN's Completed Work table**, not in plan doc headers.
 
 See [Section 2](#2-the-document-set) for the full tier table and information flow.
 
@@ -30,9 +40,9 @@ See [Section 2](#2-the-document-set) for the full tier table and information flo
 
 When RepoBaseDocs is maintained:
 
-1. **No lost context**: Every task brief carries a context chain pointing to exactly the spec sections, decisions, and gotchas relevant to that work. Agents do not need to read everything — they follow the chain.
+1. **No lost context**: Every task brief or plan doc carries a context chain pointing to exactly the spec sections, decisions, and gotchas relevant to that work. Agents do not need to read everything — they follow the chain.
 2. **No repeated mistakes**: BREADCRUMBS.md captures every gotcha. Context chains route agents to the specific gotchas that apply to their task.
-3. **No agent collisions**: TASK_BRIEFS.md assigns explicit file ownership. Two agents never modify the same file simultaneously.
+3. **No agent collisions**: Task briefs or plan docs assign explicit file ownership. Two agents never modify the same file simultaneously.
 
 ---
 
@@ -42,32 +52,40 @@ When RepoBaseDocs is maintained:
 
 | Tier | Purpose | Documents |
 |------|---------|-----------|
-| **Tier 1 — Agent Input** | Consumed by executing agents during work | PROJECT_SPEC, EXECUTION_PLAN, TASK_BRIEFS, OPEN_DECISIONS, BREADCRUMBS |
+| **Tier 0 — Agent Entry Point** | Auto-loaded by Claude Code at session start | `CLAUDE.md` (repo root) |
+| **Tier 1 — Agent Input** | Consumed by executing agents during work | PROJECT_SPEC, EXECUTION_PLAN, OPEN_DECISIONS, BREADCRUMBS |
 | **Tier 2 — Human Dashboard & Process** | Maintained as output; read by humans | PROJECT_STATE, CLOSED_DECISION_LOG, DOCS_STRATEGY |
+| **Tier 3 — Implementation Artifacts** | Historical build records; not status trackers | `docs/plans/*` (design + implementation specs) |
+
+> **TASK_BRIEFS.md** is available as an alternative to `docs/plans/*` for projects that prefer structured work packets in a single file. When using TASK_BRIEFS, it belongs in Tier 1.
 
 ### Document Descriptions
 
-| Document | One-Line Description |
-|----------|---------------------|
-| [PROJECT_SPEC](templates/PROJECT_SPEC.md) | Root specification: intent, constraints, quality attributes, scope boundaries — everything downstream derives from this |
-| [EXECUTION_PLAN](templates/EXECUTION_PLAN.md) | Value-ordered sequence of development phases, each with intent, prerequisites, and acceptance criteria |
-| [TASK_BRIEFS](templates/TASK_BRIEFS.md) | Prompt-native work packets with context chains, constraints, boundaries, and verification commands |
-| [OPEN_DECISIONS](templates/OPEN_DECISIONS.md) | Decision lifecycle tracker with default assumptions that let agents proceed without blocking |
-| [BREADCRUMBS](templates/BREADCRUMBS.md) | Hard-won knowledge — gotchas, patterns, and operational notes that prevent repeated mistakes |
-| [PROJECT_STATE](templates/PROJECT_STATE.md) | Living snapshot of project progress: what is done, active, and blocked |
-| [CLOSED_DECISION_LOG](templates/CLOSED_DECISION_LOG.md) | Execution-time decisions made by agents at forks not covered by task briefs |
-| [DOCS_STRATEGY](templates/DOCS_STRATEGY.md) | Update triggers and enforcement rules that prevent documentation drift |
+| Document | Level | One-Line Description |
+|----------|-------|---------------------|
+| CLAUDE.md | Lightweight | Agent entry point — build/test commands, architecture, routing |
+| [BREADCRUMBS](templates/BREADCRUMBS.md) | Lightweight | Hard-won knowledge — gotchas, patterns, and operational notes that prevent repeated mistakes |
+| [PROJECT_SPEC](templates/PROJECT_SPEC.md) | Standard | Root specification: intent, constraints, quality attributes, scope boundaries — everything downstream derives from this |
+| [EXECUTION_PLAN](templates/EXECUTION_PLAN.md) | Standard | Value-ordered sequence of development phases, each with intent, prerequisites, and acceptance criteria |
+| [PROJECT_STATE](templates/PROJECT_STATE.md) | Standard | Living snapshot of project progress: what is done, active, and blocked |
+| [OPEN_DECISIONS](templates/OPEN_DECISIONS.md) | Full | Decision lifecycle tracker with default assumptions that let agents proceed without blocking |
+| [DOCS_STRATEGY](templates/DOCS_STRATEGY.md) | Full | Update triggers and enforcement rules that prevent documentation drift |
+| [TASK_BRIEFS](templates/TASK_BRIEFS.md) | Full (optional) | Prompt-native work packets with context chains, constraints, boundaries, and verification commands |
+| [CLOSED_DECISION_LOG](templates/CLOSED_DECISION_LOG.md) | Full (optional) | Execution-time decisions made by agents at forks not covered by task briefs |
 
 ### Information Flow
 
 ```
+CLAUDE.md (agent entry point — routes to everything below)
+    |
+    v
 PROJECT_SPEC (root intent/constraints)
     |
     v
 EXECUTION_PLAN (phases with intent, derived from spec)
     |
     v
-TASK_BRIEFS (prompt-native work packets with context chains)
+docs/plans/* or TASK_BRIEFS (implementation specs / work packets)
     |
     v
 Executing agents work autonomously
@@ -82,16 +100,16 @@ BREADCRUMBS    <--> referenced by context chains
 
 ### When Projects Need More
 
-The 8 templates are the **minimum set**, not the maximum. Complex projects often need additional documentation:
+The templates are the **minimum set** for each adoption level, not the maximum. Complex projects often need additional documentation:
 
 - **SYSTEM_ARCHITECTURE.md**: Deep domain reference for projects with complex system interactions (e.g., PLC/HMI communication, microservices, hardware interfaces).
 - **Domain-specific deep-dives**: Subsystem documentation like `SYMBOL_RESOLUTION.md`, `MEMORY_ARCHITECTURE.md`, or `API_CONTRACT.md` for areas that need detailed reference beyond what fits in BREADCRUMBS.md.
-- **Specification documents**: Detailed specs for complex subsystems — these are inputs to TASK_BRIEFS.md, not replacements for them.
+- **Specification documents**: Detailed specs for complex subsystems — these are inputs to plan docs or task briefs, not replacements for them.
 - **Strategic documents** (e.g., `PRODUCT_VISION.md`, `PRODUCT_ROADMAP.md`): Human-facing documents that capture long-term direction. These are inputs to PROJECT_SPEC — they inform project intent, scope, and phasing. Agents do not read them directly; PROJECT_SPEC carries everything agents need. If an agent needs information from a vision or roadmap document, extract it into PROJECT_SPEC during the interview process.
-- **Design and implementation plans** (`docs/plans/`): For complex features that need design exploration before implementation. Use the naming convention `YYYY-MM-DD-<topic>-design.md` for design documents (what and why) and `YYYY-MM-DD-<topic>-implementation.md` for implementation plans (how). Design docs feed into TASK_BRIEFS; implementation plans are consumed directly by executing agents. Archive completed plans in `docs/plans/archive/` once the work is done.
+- **Design and implementation plans** (`docs/plans/`): Tier 3 artifacts for complex features that need design exploration before implementation. Use the naming convention `YYYY-MM-DD-<topic>-design.md` for design documents (what and why) and `YYYY-MM-DD-<topic>-implementation.md` for implementation plans (how). Once a feature is complete, the plan doc is a historical artifact — **status lives only in EXECUTION_PLAN's Completed Work table**. Agents should never determine project status by scanning plan doc headers.
 - **Runbooks** (alongside the system they test, or in `docs/runbooks/`): Procedural step-by-step documents that agents follow to execute repeatable operations — E2E testing, deployment, recovery, diagnostics. Unlike CLAUDE.md quick-start commands, runbooks include expected outputs at each step, branching logic for failure modes, diagnostic procedures, and known blockers with status. Naming convention: `<SYSTEM>_RUNBOOK.md` or `<OPERATION>_RUNBOOK.md`. CLAUDE.md should reference runbooks so agents discover them, but the runbook itself lives near the system it operates on. See `domain/RUNBOOK_TEMPLATE.md` for the template.
 
-Add these when the 8 base documents cannot contain the information density your project requires.
+Add these when the base documents cannot contain the information density your project requires.
 
 ---
 
@@ -107,11 +125,11 @@ This is the core workflow. It describes the full lifecycle from human idea to ag
 
 3. **Planning agent decomposes the spec into phases.** Each phase gets an intent statement answering "What capability does the system gain when this phase is complete?" The output is [EXECUTION_PLAN](templates/EXECUTION_PLAN.md) with phases ordered by value delivery.
 
-4. **Planning agent writes task briefs.** Each brief is a self-contained work packet with a context chain (pointers to the specific spec sections, decisions, and breadcrumbs relevant to that task), constraints, boundaries, and verification commands. The output is [TASK_BRIEFS](templates/TASK_BRIEFS.md).
+4. **Planning agent writes plan docs or task briefs.** Each is a self-contained work packet with a context chain (pointers to the specific spec sections, decisions, and breadcrumbs relevant to that task), constraints, boundaries, and verification commands. The output is `docs/plans/*` files or [TASK_BRIEFS](templates/TASK_BRIEFS.md).
 
-5. **Human reviews and approves.** The human reviews the spec, execution plan, and initial task briefs. This is the quality gate — once approved, executing agents work from these documents autonomously.
+5. **Human reviews and approves.** The human reviews the spec, execution plan, and initial work packets. This is the quality gate — once approved, executing agents work from these documents autonomously.
 
-6. **Executing agents pick up task briefs and work.** Each agent reads its assigned brief, follows the context chain, and builds within the declared constraints and boundaries. No "read all docs" — the context chain tells the agent exactly what to read.
+6. **Executing agents pick up work and build.** Each agent reads its assigned plan doc or brief, follows the context chain, and builds within the declared constraints and boundaries. No "read all docs" — the context chain tells the agent exactly what to read.
 
 7. **Executing agents consult shared knowledge.** [OPEN_DECISIONS](templates/OPEN_DECISIONS.md) provides default assumptions for unresolved decisions so agents can proceed without blocking. [BREADCRUMBS](templates/BREADCRUMBS.md) provides gotchas and patterns that prevent known mistakes.
 
@@ -120,8 +138,8 @@ This is the core workflow. It describes the full lifecycle from human idea to ag
 ### Key Design Principles
 
 - **The spec is interview-driven (seed-and-grow).** The planning agent does not guess what the human wants. It asks structured questions, pushes back on vague answers, and iterates until the spec is concrete.
-- **Task briefs are prompt-native.** They are structured as agent prompts — intent first, then context, then constraints, then work items, then verification. An executing agent reads one brief and starts building.
-- **Context chains replace "read all docs."** Instead of requiring agents to read every document, each task brief lists the 3-6 specific references the agent needs. This scales to large projects where the full document set is too large to fit in context.
+- **Work packets are prompt-native.** They are structured as agent prompts — intent first, then context, then constraints, then work items, then verification. An executing agent reads one packet and starts building.
+- **Context chains replace "read all docs."** Instead of requiring agents to read every document, each work packet lists the 3-6 specific references the agent needs. This scales to large projects where the full document set is too large to fit in context.
 
 ---
 
@@ -276,6 +294,8 @@ When assigning work to agents, choose one of three pipeline types based on the t
 
 Task briefs are the work packets executing agents consume. A well-written brief lets an agent start immediately; a poorly written one wastes a session on re-discovery. The full template and inline example are in [TASK_BRIEFS.md](templates/TASK_BRIEFS.md).
 
+> **Note:** Projects may use `docs/plans/*` instead of TASK_BRIEFS.md. The principles below (intent-first, context chains, constraints, verification) apply to both formats.
+
 ### Intent-First Ordering
 
 The Intent section is the first content in every task brief. This is deliberate — it is the most important information the executing agent reads. If the agent read only the Intent section and nothing else, it should be able to make correct trade-off decisions. Intent answers "why does this task exist?" and "what should I optimize for?"
@@ -365,7 +385,7 @@ When multiple agents work on a project simultaneously, coordination prevents col
 
 ### File Ownership Prevents Collisions
 
-The primary coordination mechanism is **file ownership declared in task briefs**. Each file is owned by at most one active task. When Agent A owns `services/diagnostics.py` and Agent B owns `services/alarm_manager.py`, they can work in parallel safely.
+The primary coordination mechanism is **file ownership declared in plan docs or task briefs**. Each file is owned by at most one active task. When Agent A owns `services/diagnostics.py` and Agent B owns `services/alarm_manager.py`, they can work in parallel safely.
 
 Context chains help agents understand their boundaries — each agent knows exactly which files it owns and what scope it must stay within.
 
@@ -407,7 +427,7 @@ This is asynchronous, durable communication. It works across sessions, across ag
 
 This section is a step-by-step guide for an executing agent picking up a task.
 
-### Step 1: Read Your Task Brief
+### Step 1: Read Your Work Packet
 
 Start with the Intent section. Understand *why* this task exists before reading *what* to build. The intent statement tells you what to optimize for and how to break ties when you face ambiguous choices.
 
@@ -425,7 +445,7 @@ Build within your declared Constraints and Boundaries. The Constraints section t
 
 ### Step 5: Handle Forks
 
-When you hit a design fork not covered by the task brief:
+When you hit a design fork not covered by the work packet:
 
 1. **Consult PROJECT_SPEC.** Read the Intent, Core Constraints, and Quality Attributes sections. These are the project-level values that break ties. If Quality Attributes rank "simplicity over extensibility," choose the simpler option.
 2. **Log your decision.** Write an entry in CLOSED_DECISION_LOG with the fork you encountered, the options you considered, the choice you made, and why. This prevents future agents from re-litigating the same decision.
@@ -527,46 +547,37 @@ For handling documents that have been replaced by framework equivalents, see the
 ### The Feedback Loop
 
 Specifications and memory form a reinforcing loop:
-- PROJECT_SPEC drives EXECUTION_PLAN, which drives TASK_BRIEFS.
+- PROJECT_SPEC drives EXECUTION_PLAN, which drives plan docs or task briefs.
 - Agents execute tasks and produce CLOSED_DECISION_LOG entries and BREADCRUMBS.
 - If CLOSED_DECISION_LOG shows recurring forks in the same area, the PROJECT_SPEC is underspecified — update it.
-- If BREADCRUMBS accumulate gotchas about a particular subsystem, the task briefs for that subsystem need richer context chains.
+- If BREADCRUMBS accumulate gotchas about a particular subsystem, the plan docs or task briefs for that subsystem need richer context chains.
 - DOCS_STRATEGY enforces all of this — it is the rules engine that keeps the loop turning.
 
 ---
 
 ## 12. Setting Up CLAUDE.md
 
-CLAUDE.md and RepoBaseDocs serve different purposes:
+**Recommended workflow:** Run `/init` first to auto-generate a baseline CLAUDE.md from your codebase, then use the template as a reference for sections to add (status routing, doc index). The `/init` command reads your actual code and produces better build commands and architecture descriptions than filling in a template.
 
-| Aspect | CLAUDE.md | RepoBaseDocs |
+### CLAUDE.md vs RepoBaseDocs
+
+| Aspect | CLAUDE.md (Tier 0) | RepoBaseDocs (Tier 1-2) |
 |--------|-----------|-------------|
-| **Content** | Static conventions and rules | Dynamic project state and plans |
-| **Changes** | Rarely (when conventions evolve) | Every session |
-| **Scope** | How to work in this project | What to work on |
-| **Examples** | Coding standards, safety rules, naming conventions | Phases, tasks, decisions, gotchas |
+| **Content** | Build/test commands, architecture overview, status routing | Dynamic project state and plans |
+| **Changes** | When commands/architecture/conventions change | Every session |
+| **Scope** | Agent entry point — how to work, where to look | What to work on |
+| **Auto-loaded** | Yes (every Claude Code session) | No (agents navigate via CLAUDE.md routing) |
 
 ### What Goes in CLAUDE.md
 
-CLAUDE.md is for **static instructions** that agents must follow in every session:
+CLAUDE.md is the **agent entry point** — auto-loaded into every Claude Code session:
 
-- **Coding standards**: Language conventions, naming patterns, formatting rules.
-- **Safety rules**: What agents must NOT do without human approval (e.g., "Do NOT modify safety-critical logic without explicit human approval").
-- **Allowed/forbidden AI actions**: Explicit permissions and restrictions.
-  ```markdown
-  ## Allowed AI Actions
-  - Create and modify source files in `src/` and `services/`
-  - Run tests via `pytest`
-  - Create git commits on feature branches
-
-  ## Forbidden AI Actions (Require Human Approval)
-  - Modify production configuration files
-  - Push to main branch
-  - Delete or rename database files
-  - Modify safety interlocks or critical thresholds
-  ```
-- **Project-specific patterns**: Architecture patterns that agents should follow (e.g., "All services use dependency injection via constructor parameters").
-- **Pointer to PROJECT_SPEC**: CLAUDE.md should reference PROJECT_SPEC.md as the source of project intent. When an agent encounters an ambiguous situation not covered by CLAUDE.md conventions, it should consult PROJECT_SPEC for the project's values and trade-off priorities.
+- **Status routing** (Standard+): Point agents to EXECUTION_PLAN for status, PROJECT_STATE for the dashboard, BREADCRUMBS for gotchas
+- **Build & test commands**: Exact commands to build and test the project
+- **Architecture overview**: 3-10 sentences on major layers and how they connect
+- **Key files**: The 4-8 most important files an agent needs to know about
+- **Conventions**: Project-specific coding patterns and frequently-hit gotchas
+- **Doc index**: Links to all project documentation files
 
 ### What Does NOT Go in CLAUDE.md
 
@@ -576,49 +587,20 @@ CLAUDE.md is for **static instructions** that agents must follow in every sessio
 - Decisions and rationale (goes in OPEN_DECISIONS.md and CLOSED_DECISION_LOG.md)
 - Session-specific context (goes in BREADCRUMBS.md prompt history)
 
-### Minimal CLAUDE.md Template
+### Status Routing Pattern (Standard+)
+
+At Standard adoption and above, CLAUDE.md tells agents where to look for status:
 
 ```markdown
-# Project Name
+## Project Status — Where to Look
 
-## Project Intent
-See `PROJECT_SPEC.md` for the full project specification — intent, constraints, quality attributes, and scope boundaries.
-
-## Coding Standards
-<!-- Project-specific conventions: language, formatting, patterns -->
-
-## Allowed AI Actions
-- <!-- What agents can do freely -->
-
-## Forbidden AI Actions (Require Human Approval)
-- <!-- What agents must ask before doing -->
-
-## Environment
-<!-- What does an agent need before it can work? Runtime versions,
-virtual environments, required services, database setup, etc.
-Example: "Python 3.11+, .venv in project root, PostgreSQL 15 on localhost:5432" -->
-
-## Test Commands
-<!-- Exact commands to run the test suite. Include expected output.
-Example: "pytest tests/ -v  — expect 47 tests, all passing" -->
-
-## Quick Start Commands
-<!-- Copy-paste commands to start the application, run a health check,
-and verify the system is working. An agent should go from zero to
-running in under 60 seconds with these commands. -->
-
-## Project Documentation
-For current state, execution plan, and task assignments:
-- `PROJECT_SPEC.md` — Root specification (intent, constraints, scope)
-- `EXECUTION_PLAN.md` — What to build next
-- `TASK_BRIEFS.md` — Work packets for executing agents
-- `PROJECT_STATE.md` — Where we are
-- `BREADCRUMBS.md` — Gotchas and patterns
-- `OPEN_DECISIONS.md` — Decision tracking with defaults
-- `CLOSED_DECISION_LOG.md` — Decisions made during execution
+**Start here, not in individual plan docs:**
+- `docs/EXECUTION_PLAN.md` — single source of truth for what's done and what to build next
+- `docs/PROJECT_STATE.md` — current status, active work items, what's blocked
+- `docs/BREADCRUMBS.md` — hard-won gotchas (read before modifying unfamiliar code)
 ```
 
-The **Environment**, **Test Commands**, and **Quick Start Commands** sections are critical for agent productivity. Without them, every new agent session starts with discovery work — figuring out how to run the app, what runtime version is needed, and how to verify the system is healthy. These sections eliminate that overhead by providing copy-paste commands that get an agent from zero to productive in under 60 seconds.
+This prevents agents from trusting stale `Status:` headers in individual plan docs.
 
 ### Global vs Project CLAUDE.md
 
@@ -652,10 +634,10 @@ Most projects already have documentation when they adopt RepoBaseDocs. This sect
 |-------------------|---------|
 | README (project description) | PROJECT_SPEC.md (Intent section) |
 | Architecture docs, design docs | PROJECT_SPEC.md (Domain Context, Key Interfaces) + BREADCRUMBS.md (Architecture Patterns) |
-| TODO lists, roadmaps | EXECUTION_PLAN.md (phases) + TASK_BRIEFS.md (work packets) |
+| TODO lists, roadmaps | EXECUTION_PLAN.md (phases) + plan docs or TASK_BRIEFS.md (work packets) |
 | Decision records (ADRs) | OPEN_DECISIONS.md (Decided section) |
 | Known issues, bug lists | BREADCRUMBS.md (Critical Gotchas) + PROJECT_STATE.md (Known Tech Debt) |
-| Setup guides | CLAUDE.md (Environment, Test Commands, Quick Start Commands) |
+| Setup guides | CLAUDE.md (Build & Test, Running the App, Architecture) |
 | Runbooks (procedural) | Alongside the system they test, referenced from CLAUDE.md. See `domain/RUNBOOK_TEMPLATE.md` |
 | Meeting notes, design discussions | PROJECT_SPEC.md (if they contain intent/constraints) or archive |
 | Changelog, release notes | PROJECT_STATE.md (What is Done) |
@@ -672,24 +654,35 @@ Most projects already have documentation when they adopt RepoBaseDocs. This sect
 
 ### Starting a New Project
 
-1. Interview with planning agent to produce PROJECT_SPEC.md.
-2. Copy the 8 templates from `templates/` into your project root.
-3. Fill in PROJECT_SPEC.md with the interview results.
-4. Decompose the spec into phases in EXECUTION_PLAN.md.
-5. Write task briefs for the first 2-3 tasks in TASK_BRIEFS.md.
-6. Set up PROJECT_STATE.md with the project overview.
-7. Set up CLOSED_DECISION_LOG.md (empty log, ready for agent entries).
-8. Add a CLAUDE.md with coding standards and a pointer to PROJECT_SPEC.
-9. Start working.
+#### Lightweight (scripts, small projects)
+1. Run `/init` to generate CLAUDE.md from your codebase.
+2. Copy BREADCRUMBS.md into your project.
+3. Done.
+
+#### Standard (libraries, multi-phase projects)
+1. Run `/init` to generate CLAUDE.md.
+2. Add status routing to CLAUDE.md: point agents to EXECUTION_PLAN, PROJECT_STATE, BREADCRUMBS.
+3. Interview with a planning agent to produce PROJECT_SPEC.md.
+4. Decompose into EXECUTION_PLAN.md phases.
+5. Set up PROJECT_STATE.md as the dashboard.
+6. Copy BREADCRUMBS.md into your project.
+
+#### Full (large systems, multi-agent)
+1. Start from Standard (above).
+2. Add OPEN_DECISIONS.md for unresolved choices.
+3. Create `docs/plans/` for feature specs (or TASK_BRIEFS.md for structured work packets).
+4. Add DOCS_STRATEGY.md for enforcement rules and session handoff protocol.
+5. Optionally add CLOSED_DECISION_LOG.md for execution-time decisions.
 
 ### Starting a New Session
 
-1. Read your task brief — start with Intent.
-2. Follow the context chain — read the referenced sections of PROJECT_SPEC, EXECUTION_PLAN, OPEN_DECISIONS, BREADCRUMBS.
-3. Check OPEN_DECISIONS for relevant default assumptions.
-4. Execute the work within your Constraints and Boundaries.
-5. Run Verification commands before marking the task complete.
-6. Execute the session handoff protocol before ending.
+1. Read CLAUDE.md — follow status routing to EXECUTION_PLAN and PROJECT_STATE.
+2. Read your assigned work packet — start with Intent.
+3. Follow the context chain — read the referenced sections of PROJECT_SPEC, EXECUTION_PLAN, OPEN_DECISIONS, BREADCRUMBS.
+4. Check OPEN_DECISIONS for relevant default assumptions.
+5. Execute the work within your Constraints and Boundaries.
+6. Run Verification commands before marking the task complete.
+7. Execute the session handoff protocol before ending.
 
 ### Adding a New Phase
 
@@ -697,7 +690,7 @@ Most projects already have documentation when they adopt RepoBaseDocs. This sect
 2. Write a Phase Intent statement answering "What capability does the system gain?" and "What should tasks optimize for?"
 3. Verify the phase traces back to PROJECT_SPEC — it must serve at least one capability or constraint from the spec.
 4. Update the dependency graph.
-5. Create task briefs if the phase is ready for work.
+5. Create plan docs or task briefs if the phase is ready for work.
 6. Update PROJECT_STATE.md if this changes what's blocked.
 
 ### Making a Decision

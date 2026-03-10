@@ -21,6 +21,7 @@ The main file, `claude.md` should be attached to Claude Code via startup hook. I
 - `template-conversation.md` conversation summary format
 - `template-audit-bug.md` bug audit report format
 - `template-readme.md` README format for projects and sub-packages
+- `ComplementaryDocsToAgentDocs/` project specification and state tracking templates (from [RepoBaseDocs](C:\Users\scott\Documents\RepoBaseDocs))
 
 ## Setup
 
