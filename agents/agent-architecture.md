@@ -8,7 +8,7 @@ Architecture planning: high-level structure, resource tree, and pipeline sketch.
 
 Read `/data/agent-docs/planning.md` for the project development pipeline. You are responsible for stages 2 through 5, plus writing the initial project README.
 
-Read `/data/agent-docs/package_structure.md` for sub-package structure guidelines. Apply these when deciding whether the project should be flat or hierarchical, how to define package boundaries, and what roles packages serve. The package structure guidelines take precedence over ad hoc organizational decisions.
+Read `/data/agent-docs/packages.md` for sub-package structure guidelines. Apply these when deciding whether the project should be flat or hierarchical, how to define package boundaries, and what roles packages serve. The package structure guidelines take precedence over ad hoc organizational decisions.
 
 ### Stage 2: Draft high-level division of labor
 

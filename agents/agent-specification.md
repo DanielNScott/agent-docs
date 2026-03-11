@@ -8,7 +8,7 @@ Dependency, data, and interface specification: call graphs, data contracts, reve
 
 Read `/data/agent-docs/planning.md` for the project development pipeline. You are responsible for stages 6 through 11. You will be invoked in two passes: a structural pass (stages 6-10) producing dependency and data artifacts, and a detail pass (stage 11) producing function specifications.
 
-When auditing dependency direction in the call graph and reverse call graph, consult `/data/agent-docs/package_structure.md` for the expected dependency ordering between package roles (domain, analysis, visualization, shared infrastructure, etc.).
+When auditing dependency direction in the call graph and reverse call graph, consult `/data/agent-docs/packages.md` for the expected dependency ordering between package roles (domain, analysis, visualization, shared infrastructure, etc.).
 
 ### Structural Pass (stages 6-10)
 

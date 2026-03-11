@@ -2,7 +2,7 @@
 
 ## Initialization
 
-1. Read `/data/agent-docs/code_style_short.md` for coding standards
+1. Read `/data/agent-docs/code-style-short.md` for coding standards
 2. Note your agent type and generate a UUID for this session
 
 ## Reference Code

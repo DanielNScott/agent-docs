@@ -56,6 +56,19 @@ def run_implement(project, module_name):
     return run_agent("agent-implementation", f"module={module_name}", project)
 
 
+def run_review(project):
+    """Run review agent to produce implementation report."""
+    print("=== Running Implementation Review ===")
+    return run_agent("agent-review", "review", project)
+
+
+def run_revise_implementation(project, report_path):
+    """Run implementation agent in revision mode with review report."""
+    print("=== Running Implementation Revision ===")
+    task = f"mode=revise, report=/workspace/reports/{report_path.name}"
+    return run_agent("agent-implementation", task, project)
+
+
 def check_stage(project, stage):
     """Validate stage output. Print results, return True if passed."""
     passed, errors = validate_stage(project, stage)
@@ -72,10 +85,27 @@ def check_stage(project, stage):
 
 def run_pipeline(project, task=None, modules=None, only_architecture=False,
                  only_spec_structural=False, only_spec_detail=False, only_implement=False,
-                 plan_only=False):
+                 only_review=False, only_revise=False, plan_only=False):
     """Execute pipeline stages based on options."""
 
     # Single stage modes
+    if only_review:
+        ret = run_review(project)
+        if ret != 0:
+            return ret
+        report = find_latest_report("*_agent-review_*", project)
+        if report:
+            print(f"  Review report: {report.name}")
+        return 0
+
+    if only_revise:
+        report = find_latest_report("*_agent-review_*", project)
+        if not report:
+            print("Error: no review report found. Run --only-review first.")
+            return 1
+        print(f"  Using report: {report.name}")
+        return run_revise_implementation(project, report)
+
     if only_architecture:
         if not task:
             print("Error: --only-architecture requires --task")
@@ -177,6 +207,8 @@ Examples:
   ./pipeline_comprehensive.py --project myproj --only-spec-structural
   ./pipeline_comprehensive.py --project myproj --only-spec-detail
   ./pipeline_comprehensive.py --project myproj --only-implement --modules mod
+  ./pipeline_comprehensive.py --project myproj --only-review
+  ./pipeline_comprehensive.py --project myproj --only-revise
   ./pipeline_comprehensive.py --project myproj --task "task" --restart
 
 Pipeline stages:
@@ -184,6 +216,8 @@ Pipeline stages:
   2. Specification (structural): call graph, contracts, reverse deps, def-use
   3. Specification (detail): function specifications per module
   4. Implementation: code from specifications, per module
+  5. Review: evaluate implementation against specs
+  6. Revision: fix issues identified by review
 """
     )
 
@@ -194,6 +228,8 @@ Pipeline stages:
     parser.add_argument("--only-spec-structural", action="store_true", help="Run only structural specification")
     parser.add_argument("--only-spec-detail", action="store_true", help="Run only detail specification")
     parser.add_argument("--only-implement", action="store_true", help="Run only implementation")
+    parser.add_argument("--only-review", action="store_true", help="Run only implementation review")
+    parser.add_argument("--only-revise", action="store_true", help="Run only implementation revision (requires prior review)")
     parser.add_argument("--plan-only", action="store_true", help="Run architecture and specification only, no implementation")
     parser.add_argument("--restart", action="store_true", help="Archive old reports before starting")
 
@@ -212,5 +248,7 @@ Pipeline stages:
         only_spec_structural=args.only_spec_structural,
         only_spec_detail=args.only_spec_detail,
         only_implement=args.only_implement,
+        only_review=args.only_review,
+        only_revise=args.only_revise,
         plan_only=args.plan_only
     ))
