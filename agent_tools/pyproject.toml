@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-tools"
+version = "0.1.0"
+description = "Code analysis CLI and MCP server for agent infrastructure"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+viz = [
+    "matplotlib",
+    "networkx",
+]
+
+[project.scripts]
+agent-tools = "agent_tools.run:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agent_tools"]
