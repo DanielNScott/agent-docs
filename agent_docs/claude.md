@@ -127,11 +127,11 @@ Use a brief header like this one:
 ## Template use
 
 Make note of the templates available here:
-- template-adr.md for architectural decision records
-- template-audit-bug.md for bug audits
-- template-commit.md for commit message drafts
-- template-conversation.md for conversation summaries
-- template-readme.md for README.md files
+- `AGENT_INFRA_DIR/agent_docs/template-adr.md` for architectural decision records
+- `AGENT_INFRA_DIR/agent_docs/template-audit-bug.md` for bug audits
+- `AGENT_INFRA_DIR/agent_docs/template-commit.md` for commit message drafts
+- `AGENT_INFRA_DIR/agent_docs/template-conversation.md` for conversation summaries
+- `AGENT_INFRA_DIR/agent_docs/template-readme.md` for README.md files
 
 Use them when any covered action is requested.
 
