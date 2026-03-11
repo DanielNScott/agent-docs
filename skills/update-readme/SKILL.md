@@ -1,5 +1,5 @@
 ---
-name: update-readme
+name: agent-infra-update-readme
 description: Use when the user asks to write or update a README file for a project or sub-package
 ---
 

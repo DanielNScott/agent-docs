@@ -1,5 +1,5 @@
 ---
-name: revdeps
+name: agent-infra-revdeps
 description: Use when evaluating whether package architecture results in calls to all its elements
 argument-hint: "[directory]"
 ---

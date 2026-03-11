@@ -1,5 +1,5 @@
 ---
-name: defuse
+name: agent-infra-defuse
 description: Use when analyzing variable and data flow for debugging, auditing, or new package development
 argument-hint: "[directory]"
 ---

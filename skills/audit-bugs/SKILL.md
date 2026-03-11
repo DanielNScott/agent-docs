@@ -1,5 +1,5 @@
 ---
-name: audit-bugs
+name: agent-infra-audit-bugs
 description: Use when the user asks for a bug audit of a project or component
 ---
 

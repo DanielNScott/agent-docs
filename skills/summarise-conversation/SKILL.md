@@ -1,5 +1,5 @@
 ---
-name: summarise-conversation
+name: agent-infra-summarise-conversation
 description: Use when the user asks for a conversation summary or wants to record the outcome of a discussion
 ---
 

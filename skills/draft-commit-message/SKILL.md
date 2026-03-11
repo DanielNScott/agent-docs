@@ -1,5 +1,5 @@
 ---
-name: draft-commit-message
+name: agent-infra-draft-commit-message
 description: Use when the user asks for a commit message draft, or when work is complete and changes should be committed
 ---
 

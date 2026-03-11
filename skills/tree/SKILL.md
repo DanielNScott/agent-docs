@@ -1,5 +1,5 @@
 ---
-name: tree
+name: agent-infra-tree
 description: Use to establish the structure of a project before interacting with it, or when exploring an unfamiliar codebase
 argument-hint: "[directory]"
 ---

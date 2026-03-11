@@ -1,5 +1,5 @@
 ---
-name: callgraph
+name: agent-infra-callgraph
 description: Use when designing, implementing, or improving program flow to minimize complexity
 argument-hint: "[directory]"
 ---
