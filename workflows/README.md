@@ -40,7 +40,7 @@ Each production agent receives a checklist generated from its instruction steps.
 
 ## Module Structure
 
-- claude_runner.py -- prompt assembly and agent dispatch
+- claude_runner.py -- prompt assembly, agent dispatch, and rate limit retry
 - pipeline_iterative.py -- iterative pipeline orchestration
 - pipeline_managed.py -- managed pipeline orchestration
 - pipeline_comprehensive.py -- comprehensive pipeline orchestration
@@ -110,11 +110,11 @@ python3 pipeline_managed.py --project myproj --task "Build feature X" --restart
 
 # Comprehensive pipeline -- architecture, specification, implementation
 python3 pipeline_comprehensive.py --project myproj --task "Add feature X"
-python3 pipeline_comprehensive.py --project myproj --task "X" --plan-only
-python3 pipeline_comprehensive.py --project myproj --only-architecture --task "task"
-python3 pipeline_comprehensive.py --project myproj --only-specification
-python3 pipeline_comprehensive.py --project myproj --only-implement --modules mod_a
-python3 pipeline_comprehensive.py --project myproj --only-audit
+python3 pipeline_comprehensive.py --project myproj --task "X" --stop-before implementation
+python3 pipeline_comprehensive.py --project myproj --start-from implementation
+python3 pipeline_comprehensive.py --project myproj --only impl-audit
+python3 pipeline_comprehensive.py --project myproj --only implementation --modules mod_a
+python3 pipeline_comprehensive.py --project myproj --only-loop architecture --task "task"
 python3 pipeline_comprehensive.py --project myproj --task "task" --restart
 ```
 

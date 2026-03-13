@@ -4,7 +4,7 @@ Claude agent runner.
 Builds prompts from lifecycle and agent configs, dispatches to Docker.
 """
 
-import subprocess, uuid, re, shutil
+import subprocess, uuid, re, shutil, time, os
 from datetime import datetime
 from pathlib import Path
 
@@ -126,14 +126,61 @@ USER TASK:
 
 # Execution
 
-def run_agent(agent_type, task, project):
-    """Run a Claude agent with the given task in a project workspace."""
-    prompt = build_prompt(agent_type, task, project)
+MAX_RETRIES = 3
+INITIAL_BACKOFF_SECONDS = 60
+INTER_CALL_DELAY_SECONDS = int(os.environ.get("CLAUDE_INTER_CALL_DELAY", "5"))
 
-    result = subprocess.run(
-        [str(SCRIPT_DIR / "docker-claude.sh"), project, prompt],
-        capture_output=False
-    )
+RATE_LIMIT_PATTERNS = [
+    "rate limit",
+    "hit your limit",
+    "resets",
+    "too many requests",
+    "429",
+]
+
+
+def _is_rate_limited(output):
+    """Check if agent output indicates a rate limit."""
+    lower = output.lower()
+    return any(p in lower for p in RATE_LIMIT_PATTERNS)
+
+
+def run_agent(agent_type, task, project):
+    """Run a Claude agent with retry on rate limits."""
+    prompt = build_prompt(agent_type, task, project)
+    cmd = [str(SCRIPT_DIR / "docker-claude.sh"), project, prompt]
+
+    # Delay between successive calls to avoid hitting rate limits
+    if INTER_CALL_DELAY_SECONDS > 0:
+        time.sleep(INTER_CALL_DELAY_SECONDS)
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        # Print agent output
+        if result.stdout:
+            print(result.stdout, end="")
+
+        # Success
+        if result.returncode == 0:
+            return 0
+
+        # Check for rate limiting in stdout and stderr
+        combined = (result.stdout or "") + (result.stderr or "")
+        if not _is_rate_limited(combined):
+            if result.stderr:
+                print(result.stderr, end="")
+            return result.returncode
+
+        # Rate limited — retry with exponential backoff
+        backoff = INITIAL_BACKOFF_SECONDS * (2 ** (attempt - 1))
+        if attempt < MAX_RETRIES:
+            print(f"  Rate limited (attempt {attempt}/{MAX_RETRIES}), "
+                  f"retrying in {backoff}s...")
+            time.sleep(backoff)
+        else:
+            print(f"  Rate limited (attempt {attempt}/{MAX_RETRIES}), "
+                  f"giving up.")
 
     return result.returncode
 

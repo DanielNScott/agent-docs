@@ -1,6 +1,6 @@
 # Agent-infra
 
-This repository provides a reusable infrastructure layer for Claude Code projects. It installs once and applies everywhere. As a result, Claude receives claude.md style instructions, code-style instructions, and project orientation on startup, along with command line tools via MCP for code analysis, and document templates. The same tools are exported as skills to the user.
+This repository provides a reusable infrastructure layer for Claude Code projects. It installs once and applies everywhere. As a result, Claude receives claude.md style instructions, code-style instructions, and project orientation on startup, along with command line tools via MCP for code analysis, and document templates. The same tools are exported as skills to the user. A separate Docker-based workflow layer orchestrates multi-agent pipelines for autonomous project development.
 
 ## How It Works
 
@@ -22,6 +22,8 @@ The SessionStart hook runs agent-infra-startup.sh, which...
 - provides basic startup instructions
 - informs Claude about the code style to adhere to
 - shows claude the directory structure for the project
+
+Separately, `workflows/` provides Docker-based pipelines that run agents autonomously. These do not require installation — they use `docker-claude.sh` to dispatch agents into isolated containers with project workspaces mounted in.
 
 ## Project Structure
 
@@ -81,9 +83,10 @@ The SessionStart hook runs agent-infra-startup.sh, which...
 - `agent-architecture` produces a resource tree, pipeline sketch, and README
 - `agent-specification` produces call graphs, contracts, and function specs
 - `agent-implementation` writes code from planning artifacts
-- `agent-review` audits implemented modules against specs and contracts
+- `agent-audit-architecture` audits resource tree and structural specs
+- `agent-audit-specification` audits function specifications
+- `agent-audit-implementation` audits code against specs and contracts
 - `agent-manager` scopes tasks into work units and reviews completed units
-- `shared.md` lifecycle instructions prepended by the Docker runner (not a subagent)
 
 ### workflows
 

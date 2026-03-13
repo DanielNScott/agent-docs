@@ -23,16 +23,22 @@ def get_modules_from_resources(planning_dir):
 
 
 def get_modules_from_specs(planning_dir):
-    """Extract module names from spec_mod_*.txt filenames."""
+    """Extract module names from spec files (flat or hierarchical layout)."""
     specs_dir = planning_dir / "specs"
     if not specs_dir.exists():
         return []
     names = []
-    for f in sorted(specs_dir.glob("spec_mod_*.txt")):
-        match = re.match(r'spec_mod_(.+)\.txt', f.name)
-        if match:
-            names.append(match.group(1))
-    return names
+    for f in sorted(specs_dir.rglob("*.txt")):
+        rel = str(f.relative_to(specs_dir))
+        # Flat: spec_mod_config.txt -> config
+        flat_match = re.match(r'spec_mod_(.+)\.txt', rel)
+        # Hierarchical: spec_mod_collect/news.txt -> collect/news
+        hier_match = re.match(r'spec_mod_([^/]+)/(.+)\.txt', rel)
+        if hier_match:
+            names.append(f"{hier_match.group(1)}/{hier_match.group(2)}")
+        elif flat_match and '/' not in rel:
+            names.append(flat_match.group(1))
+    return sorted(set(names))
 
 
 # Stage validators
@@ -141,29 +147,36 @@ def validate_specification(planning_dir):
         errors.append("specs/ directory not found")
         return errors
 
-    spec_files = sorted(specs_dir.glob("spec_mod_*.txt"))
+    # Discover spec files: flat (spec_mod_X.txt) and hierarchical (spec_mod_X/Y.txt)
+    spec_files = []
+    for f in sorted(specs_dir.rglob("*.txt")):
+        rel = str(f.relative_to(specs_dir))
+        hier_match = re.match(r'spec_mod_([^/]+)/(.+)\.txt', rel)
+        flat_match = re.match(r'spec_mod_(.+)\.txt', rel)
+        if hier_match:
+            spec_files.append((f, f"{hier_match.group(1)}/{hier_match.group(2)}"))
+        elif flat_match and '/' not in rel:
+            spec_files.append((f, flat_match.group(1)))
+
     if not spec_files:
         errors.append("no spec_mod_*.txt files found in specs/")
         return errors
 
     # Validate each spec file
     spec_modules = []
-    for spec_file in spec_files:
-        match = re.match(r'spec_mod_(.+)\.txt', spec_file.name)
-        if not match:
-            continue
-        mod_name = match.group(1)
+    for spec_file, mod_name in spec_files:
         spec_modules.append(mod_name)
 
         text = spec_file.read_text()
         if not text.strip():
-            errors.append(f"{spec_file.name} is empty")
+            errors.append(f"{spec_file.relative_to(specs_dir)} is empty")
             continue
 
-        # Check first line matches expected format
+        # Check first line matches expected format (use basename for hierarchical)
         first_line = text.split('\n', 1)[0].strip().lstrip('#').strip()
-        if not first_line.startswith(f"Module: {mod_name}"):
-            errors.append(f"{spec_file.name} first line doesn't match '# Module: {mod_name}[.py]' (got: '{text.split(chr(10), 1)[0].strip()}')")
+        check_name = mod_name.split('/')[-1] if '/' in mod_name else mod_name
+        if not first_line.startswith(f"Module: {check_name}") and not first_line.startswith(f"Module: {mod_name}"):
+            errors.append(f"{spec_file.relative_to(specs_dir)} first line doesn't match '# Module: {mod_name}[.py]' (got: '{text.split(chr(10), 1)[0].strip()}')")
 
     # Cross-check: spec modules vs resources.txt
     resource_modules = get_modules_from_resources(planning_dir)
