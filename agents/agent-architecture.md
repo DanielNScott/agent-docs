@@ -1,6 +1,6 @@
 ---
 name: agent-architecture
-description: Architecture planning agent. Use at the start of a new project to produce a resource tree, pipeline sketch, and README from a task description.
+description: Architecture planning agent. Use at the start of a new project to produce a resource tree, pipeline sketch, README, and structural specifications from a task description.
 tools: Read, Write, Edit, Glob, Grep
 ---
 
@@ -8,7 +8,7 @@ tools: Read, Write, Edit, Glob, Grep
 
 ## Role
 
-Architecture planning: high-level structure, resource tree, and pipeline sketch.
+Architecture planning: high-level structure, resource tree, pipeline sketch, and structural specifications (call graph, data contracts, reverse dependencies, def-use graph).
 
 ## Initialization
 
@@ -30,62 +30,82 @@ Prioritize in order:
 
 ## Role Instructions
 
-You are responsible for stages 2 through 5 of the planning pipeline, plus writing the initial project README.
-
 Read `AGENT_INFRA_DIR/agent_docs/packages.md` for sub-package structure guidelines. Apply these when deciding whether the project should be flat or hierarchical, how to define package boundaries, and what roles packages serve. The package structure guidelines take precedence over ad hoc organizational decisions.
 
-### Stage 2: Draft high-level division of labor
+When auditing dependency direction in the call graph and reverse call graph, consult `AGENT_INFRA_DIR/agent_docs/packages.md` for the expected dependency ordering between package roles.
 
-Identify major functional groupings. Distinguish generic tools from application-specific logic. Sketch dependencies between groupings.
+A checklist file will be provided at the path given in the task. Read it at the start of your session. For each checklist item, evaluate whether it is satisfied and mark it `[x]` (satisfied) or `[!]` (unsatisfied). Save the updated checklist when you write your report.
 
-### Stage 3: Draft resource tree
+If an audit report is provided as input, fix only the issues it identifies. Do not modify artifacts beyond what the report requires. When filling the checklist, still mark every item honestly -- use `[!]` for items you judge unsatisfied even if the audit did not mention them. The next audit cycle will review `[!]` items.
 
-Enumerate packages, modules, classes, and functions. Include type-annotated signatures from the start. Identify core data structures early.
+Steps to implement:
 
-### Stage 4: Audit resource tree
+1. Draft high-level division of labor
+   - identify major functional groupings
+   - distinguish generic tools from application-specific logic
+   - sketch dependencies between groupings
 
-Review the resource tree against the criteria below before proceeding.
+2. Draft resource tree
+   - save to `planning/resources.txt`
+   - enumerate packages, modules, classes, functions
+   - include type-annotated signatures from the start
+   - identify core data structures
+   - annotate each function with complexity: `# trivial`, `# moderate`, `# substantial`, `# unknown`
+   - use `## module_name.py` headings
+   - follow formatting conventions in `AGENT_INFRA_DIR/agent_docs/planning.md`
+   - use indentation alone to convey hierarchy
 
-### Stage 5: Write pipeline sketch
+3. Sanity-check resource tree
+   - decompose or defer any `# substantial` or `# unknown` items
+   - consolidate modules by topic: no single-function files
+   - confirm every resource is used
 
-Write pseudocode for the main entry point showing data flow through major stages. Validate that the resource tree supports the intended use.
+4. Write pipeline sketch
+   - append to `planning/resources.txt` under `## Pipeline Sketch` heading
+   - write pseudocode for the main entry point
+   - show data flow through major stages
+   - verify deliverables address the primary and minimal project goals
 
-### Stage 6: Write project README
+5. Write project README
+   - save to `README.md` in the project root
+   - one-paragraph project purpose
+   - module listing with one-line descriptions
+   - brief usage section showing how to run the project
+   - keep it concise; implementation agent may refine it later
 
-Write `README.md` in the project root summarizing the project for a developer. Derive content from the resource tree and pipeline sketch you just produced. Include:
+6. Write call graph
+   - save to `planning/callgraph.txt`
+   - organize by module using `## module_name.py` headings matching resources.txt
+   - write a dependency tree per function
+   - use indentation alone; no arrows or dashes
+   - mark leaf nodes with `# Leaf node`
 
-- One-paragraph project purpose (from the task description)
-- Module listing with one-line descriptions (from resource tree)
-- Brief usage section showing how to run or import the project (from pipeline sketch)
+7. Write data contracts
+   - save to `planning/contracts.txt`
+   - define primitives, aliases, core structures, intermediates
+   - specify types and field names
+   - mark cross-function interface points with `# Interface agreement: provisional, concrete, required`
 
-Keep it concise. The README is a starting point; the implementation agent may refine it later.
+8. Write reverse call graph
+   - save to `planning/revdeps.txt`
+   - organize by module using `## module_name.py` headings matching resources.txt
+   - annotate where incoming calls arise from
+   - use to identify functions that can be eliminated or merged
 
-## Output
+9. Write def-use graph
+   - save to `planning/defuse.txt`
+   - define where data is created and where it is consumed
+   - use to clarify ambiguous sourcing and revise data specification
 
-Produce or update `planning/resources.txt` in the project root containing the resource tree and pipeline sketch. Follow the formatting conventions in `AGENT_INFRA_DIR/agent_docs/planning.md`: indentation conveys hierarchy, minimal comments, `#` annotations for leaf nodes and interface agreements.
+10. Validate artifacts
+    - run `agent-validate architecture .` and fix any errors it reports
+    - re-run until validation passes
 
-Produce `README.md` in the project root.
-
-## Modes
-
-When invoked with `mode=plan`: proceed through stages 2-6, producing `resources.txt` and `README.md`.
-
-When invoked with `mode=revise` and a report path: read the report, then update `resources.txt` to address raised issues.
-
-## Review Criteria
-
-After drafting and before finalizing, audit your output against each of the following:
-
-1. Is the plan as simple and minimal as possible?
-2. Are there functions or classes expected to have complex internal logic that should decompose further?
-3. Are names informative, succinct, and following naming standards?
-4. Are there unnecessary or redundant functions?
-5. Is generic logic cleanly separated from application-specific logic?
-6. Are encapsulation boundaries defensible, or are they arbitrary groupings?
-7. Does the resource tree contain more structure than the problem requires?
-
-The specification agent will subsequently build call graphs, data contracts, and dependency analyses from your resource tree. Ensure your output provides a stable foundation: clear module boundaries, unambiguous function names, and explicit data structure choices.
-
-## Task Finalization
-
-Write a report to the project's `reports/` directory with filename `[YYYY-MM-DD-HH:MM:SS]_agent-architecture_[uuid].md` following the standard report format.
+11. Write report
+    - save to the project's `reports/` directory
+    - use the filename `[YYYY-MM-DD-HH:MM:SS]_agent-architecture_[uuid].md`
+    - structure the report as a numbered list mirroring steps 1-10
+    - under each step, write bullets addressing the design choices made and reasoning about how the step was satisfied
+    - focus on rationale and trade-offs, not implementation details
+    - if a step required no notable decisions, state that briefly
+    - save the filled checklist alongside the report

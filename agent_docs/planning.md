@@ -43,6 +43,7 @@
    - Validates that resource tree supports intended use
 
 6. Write call graph
+   - Organize by module using `## module_name.py` headings matching resources.txt
    - Tree of dependencies per function
    - Use indentation alone; no arrows or dashes
    - Mark leaf nodes with `# Leaf node` comment
@@ -58,7 +59,8 @@
    - Verify consistency with signatures in resource tree
 
 9. Write reverse call graph
-	- Annotate where incomming calls arise from
+	- Organize by module using `## module_name.py` headings matching resources.txt
+	- Annotate where incoming calls arise from
 	- Use to revise program towards minimal implementation
 
 10. Write def-use graph

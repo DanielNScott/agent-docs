@@ -36,81 +36,48 @@ Consult `AGENT_INFRA_DIR/agent_docs/packages.md` when deciding how to partition 
 
 Use `agent-tools --tree --depth 4 [project_dir]` to understand the current project structure before scoping or reviewing.
 
-### Scoping Principles
+When scoping (task provided, no report):
 
-When decomposing a task into work units:
+1. Analyze the project and task
+   - read existing code and structure
+   - identify major work areas
 
-1. Each unit is implemented by a single iterative agent session. Scope units so that each is completable in one session.
-2. Order units by dependency. If unit 2 reads files created by unit 1, unit 1 comes first.
-3. Each unit description must be self-contained. An iterative agent reading only that unit's text must know exactly what to implement, where, and to what standard.
-4. Include concrete file paths, function names, and acceptance conditions in each unit description.
-5. Prefer fewer, larger units over many small ones.
-6. If the entire task fits in one iterative session, produce one unit.
-7. Do not include review, testing, or documentation as separate units.
+2. Decompose into work units
+   - each unit is completable in one iterative agent session
+   - order units by dependency
+   - each unit description must be self-contained
+   - include concrete file paths, function names, and acceptance conditions
+   - prefer fewer, larger units over many small ones
+   - if the entire task fits in one session, produce one unit
+   - do not include review, testing, or documentation as separate units
 
-### Review Principles
+3. Write task plan to `planning/taskplan.md`
+   - 1-3 sentence summary of overall task and approach
+   - for each unit: `## Unit N: [short title]`, 2-5 sentence scoped description, `### Dependencies` section, `### Acceptance` section
+   - use sequential integer IDs starting at 1
 
-When reviewing a completed work unit:
+4. Write report
+   - save to the project's `reports/` directory
+   - use the filename `[YYYY-MM-DD-HH:MM:SS]_agent-manager_[uuid].md`
+   - follow the standard report format
 
-1. Read the iterative agent's report.
-2. Examine the actual project files to verify the work was done.
-3. Compare against the unit's acceptance criteria.
-4. Assess whether the remaining units in the plan are still appropriate given what was actually implemented.
-5. If remaining units need revision, rewrite them in `planning/taskplan.md`. Do not rewrite completed units.
+When reviewing (unit ID and report path provided):
 
-## Modes
+1. Read context
+   - read the task plan
+   - read the iterative agent's report
+   - examine the actual project files to verify the work was done
 
-When invoked with `mode=scope`:
+2. Evaluate the completed unit
+   - compare against the unit's acceptance criteria
+   - assess whether remaining units are still appropriate given what was actually implemented
 
-Receive a task via `task=<description>`. Analyze the project and task. Write a task plan to `planning/taskplan.md` in the format below. Write a standard report to `reports/`.
+3. Adjust remaining units if needed
+   - if remaining units need revision, rewrite them in `planning/taskplan.md`
+   - do not rewrite completed units
 
-When invoked with `mode=review`:
-
-Receive `unit=<N>` and `report=<path>`. Read the task plan, the iterative report, and examine the project. Write your verdict and any plan adjustments to `reports/`.
-
-## Task Plan Format
-
-```
-# Task Plan
-
-[1-3 sentence summary of overall task and approach]
-
-## Unit 1: [short title]
-
-[2-5 sentence scoped description. Include file paths, function names,
-and specific instructions. Must be self-contained.]
-
-### Dependencies
-[Files or modules this unit reads or modifies, one per line]
-
-### Acceptance
-[1-3 concrete conditions for completion]
-
-## Unit 2: [short title]
-
-[...]
-```
-
-The pipeline parses `## Unit N:` headings mechanically. Use sequential integer IDs starting at 1.
-
-## Review Report Format
-
-Your report in review mode must contain this section:
-
-```
-## Verdict
-
-[proceed|adjust|done]
-
-[1-3 sentence justification]
-```
-
-The verdict must be exactly one of:
-
-- **proceed** -- unit is complete, continue to next unit unchanged
-- **adjust** -- unit is complete, but remaining units have been revised in taskplan.md
-- **done** -- the overall task is complete, no further units needed
-
-## Task Finalization
-
-Write a report to the project's `reports/` directory with filename `[YYYY-MM-DD-HH:MM:SS]_agent-manager_[uuid].md` following the standard report format.
+4. Write report
+   - save to the project's `reports/` directory
+   - use the filename `[YYYY-MM-DD-HH:MM:SS]_agent-manager_[uuid].md`
+   - include a `## Verdict` section with exactly one of: `proceed` (unit complete, continue), `adjust` (unit complete, remaining units revised), `done` (overall task complete)
+   - 1-3 sentence justification
