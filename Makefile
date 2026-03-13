@@ -6,7 +6,7 @@ REPO_DIR := $(shell pwd)
 BOLD := \033[1m
 RESET := \033[0m
 
-.PHONY: install uninstall update
+.PHONY: install uninstall update docker
 
 install:
 	@printf "$(BOLD)[1/7] Installing agent-tools CLI from $(REPO_DIR)/agent_tools...$(RESET)\n"
@@ -78,4 +78,9 @@ update:
 	@printf "  uv tool install --editable $(REPO_DIR)/agent_tools\n"
 	@uv tool install --editable $(REPO_DIR)/agent_tools
 	@printf "\n"
+	@printf "$(BOLD)Done.$(RESET)\n"
+
+docker:
+	@printf "$(BOLD)Building Docker image claude-code...$(RESET)\n"
+	@docker build -f workflows/Dockerfile -t claude-code .
 	@printf "$(BOLD)Done.$(RESET)\n"

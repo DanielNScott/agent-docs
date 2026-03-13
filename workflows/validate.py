@@ -1,222 +1,28 @@
 #!/usr/bin/env python3
 """
 Stage output validation for development pipeline.
-Checks structural properties of artifacts produced by each stage.
+Thin wrapper around agent_tools.validate, adding project-based path resolution.
 """
 
 import sys
-import re
+import argparse
+from agent_tools.validate import validate_stage, get_modules_from_resources, get_modules_from_specs
 from claude_runner import WORKSPACE_DIR
 
 
-# Module discovery helpers
-
-def get_modules_from_resources(planning_dir):
-    """Extract module names from ## headings in resources.txt, excluding Pipeline Sketch."""
-    resources = planning_dir / "resources.txt"
-    if not resources.exists():
-        return []
-    text = resources.read_text()
-    names = re.findall(r'^##\s+(\S+\.py)', text, re.MULTILINE)
-    return [n.replace('.py', '') for n in names]
-
-
-def get_modules_from_specs(planning_dir):
-    """Extract module names from spec_mod_*.txt filenames."""
-    specs_dir = planning_dir / "specs"
-    if not specs_dir.exists():
-        return []
-    names = []
-    for f in sorted(specs_dir.glob("spec_mod_*.txt")):
-        match = re.match(r'spec_mod_(.+)\.txt', f.name)
-        if match:
-            names.append(match.group(1))
-    return names
-
-
-# Stage validators
-
-def validate_architecture(planning_dir):
-    """Validate architecture stage output."""
-    errors = []
-    resources = planning_dir / "resources.txt"
-
-    if not resources.exists():
-        errors.append("resources.txt not found")
-        return errors
-
-    text = resources.read_text()
-    if not text.strip():
-        errors.append("resources.txt is empty")
-        return errors
-
-    modules = re.findall(r'^##\s+(\S+\.py)', text, re.MULTILINE)
-    if not modules:
-        errors.append("resources.txt has no ## module.py headings")
-
-    if not re.search(r'^##\s+Pipeline Sketch', text, re.MULTILINE):
-        errors.append("resources.txt has no ## Pipeline Sketch section")
-
-    return errors
-
-
-def validate_spec_structural(planning_dir):
-    """Validate structural specification stage output."""
-    errors = []
-
-    # callgraph.txt
-    callgraph = planning_dir / "callgraph.txt"
-    if not callgraph.exists():
-        errors.append("callgraph.txt not found")
-    else:
-        text = callgraph.read_text()
-        if not text.strip():
-            errors.append("callgraph.txt is empty")
-        else:
-            if not re.findall(r'^##\s+\S+\.py', text, re.MULTILINE):
-                errors.append("callgraph.txt has no ## module.py headings")
-            if not re.search(r'#\s+Leaf node', text):
-                errors.append("callgraph.txt has no leaf node markers")
-
-    # contracts.txt
-    contracts = planning_dir / "contracts.txt"
-    if not contracts.exists():
-        errors.append("contracts.txt not found")
-    else:
-        text = contracts.read_text()
-        if not text.strip():
-            errors.append("contracts.txt is empty")
-        else:
-            if not re.findall(r'^##\s+', text, re.MULTILINE):
-                errors.append("contracts.txt has no ## headings")
-            if not re.search(r'#\s+Interface agreement:', text):
-                errors.append("contracts.txt has no interface agreement markers")
-
-    # revdeps.txt
-    revdeps = planning_dir / "revdeps.txt"
-    if not revdeps.exists():
-        errors.append("revdeps.txt not found")
-    else:
-        text = revdeps.read_text()
-        if not text.strip():
-            errors.append("revdeps.txt is empty")
-        else:
-            if not re.findall(r'^##\s+\S+\.py', text, re.MULTILINE):
-                errors.append("revdeps.txt has no ## module.py headings")
-
-    # defuse.txt
-    defuse = planning_dir / "defuse.txt"
-    if not defuse.exists():
-        errors.append("defuse.txt not found")
-    else:
-        text = defuse.read_text()
-        if not text.strip():
-            errors.append("defuse.txt is empty")
-        else:
-            if not re.search(r'^Def:', text, re.MULTILINE):
-                errors.append("defuse.txt has no Def: blocks")
-            if not re.search(r'^Use:', text, re.MULTILINE):
-                errors.append("defuse.txt has no Use: blocks")
-
-    # Cross-stage: modules in resources.txt vs structural artifacts
-    resource_modules = get_modules_from_resources(planning_dir)
-    if not resource_modules:
-        return errors
-
-    if callgraph.exists() and callgraph.read_text().strip():
-        cg_text = callgraph.read_text()
-        cg_modules = [m.replace('.py', '') for m in re.findall(r'^##\s+(\S+\.py)', cg_text, re.MULTILINE)]
-        for mod in resource_modules:
-            if mod not in cg_modules:
-                errors.append(f"module '{mod}' in resources.txt missing from callgraph.txt")
-
-    if revdeps.exists() and revdeps.read_text().strip():
-        rd_text = revdeps.read_text()
-        rd_modules = [m.replace('.py', '') for m in re.findall(r'^##\s+(\S+\.py)', rd_text, re.MULTILINE)]
-        for mod in resource_modules:
-            if mod not in rd_modules:
-                errors.append(f"module '{mod}' in resources.txt missing from revdeps.txt")
-
-    return errors
-
-
-def validate_spec_detail(planning_dir):
-    """Validate detail specification stage output."""
-    errors = []
-
-    specs_dir = planning_dir / "specs"
-    if not specs_dir.exists():
-        errors.append("specs/ directory not found")
-        return errors
-
-    spec_files = sorted(specs_dir.glob("spec_mod_*.txt"))
-    if not spec_files:
-        errors.append("no spec_mod_*.txt files found in specs/")
-        return errors
-
-    # Validate each spec file
-    spec_modules = []
-    for spec_file in spec_files:
-        match = re.match(r'spec_mod_(.+)\.txt', spec_file.name)
-        if not match:
-            continue
-        mod_name = match.group(1)
-        spec_modules.append(mod_name)
-
-        text = spec_file.read_text()
-        if not text.strip():
-            errors.append(f"{spec_file.name} is empty")
-            continue
-
-        # Check first line matches expected format
-        first_line = text.split('\n', 1)[0].strip()
-        if not first_line.startswith(f"# Module: {mod_name}"):
-            errors.append(f"{spec_file.name} first line doesn't match '# Module: {mod_name}[.py]' (got: '{first_line}')")
-
-    # Cross-stage: spec modules vs resources.txt
-    resource_modules = get_modules_from_resources(planning_dir)
-    if resource_modules:
-        for mod in resource_modules:
-            if mod not in spec_modules:
-                errors.append(f"module '{mod}' in resources.txt has no spec_mod_{mod}.txt")
-        for mod in spec_modules:
-            if mod not in resource_modules:
-                errors.append(f"spec_mod_{mod}.txt has no matching module in resources.txt")
-
-    return errors
-
-
-# Dispatch
-
-VALIDATORS = {
-    "architecture": validate_architecture,
-    "spec-structural": validate_spec_structural,
-    "spec-detail": validate_spec_detail,
-}
-
-
-def validate_stage(project, stage):
-    """Run validation for a pipeline stage. Returns (passed, errors)."""
+def validate_stage_by_project(project, stage):
+    """Run validation for a pipeline stage by project name. Returns (passed, errors)."""
     planning_dir = WORKSPACE_DIR / project / "planning"
-
-    if stage not in VALIDATORS:
-        return False, [f"unknown stage: {stage} (valid: {', '.join(VALIDATORS)})"]
-
-    if not planning_dir.exists():
-        return False, [f"planning directory not found: {planning_dir}"]
-
-    errors = VALIDATORS[stage](planning_dir)
-    return len(errors) == 0, errors
+    return validate_stage(planning_dir, stage)
 
 
 if __name__ == "__main__":
-    import argparse
     parser = argparse.ArgumentParser(description="Validate pipeline stage output")
     parser.add_argument("--project", required=True, help="Project name")
-    parser.add_argument("--stage", required=True, choices=VALIDATORS.keys(), help="Stage to validate")
+    parser.add_argument("--stage", required=True, choices=["architecture", "specification"], help="Stage to validate")
     args = parser.parse_args()
 
-    passed, errors = validate_stage(args.project, args.stage)
+    passed, errors = validate_stage_by_project(args.project, args.stage)
 
     if passed:
         print(f"PASS: {args.stage}")

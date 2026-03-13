@@ -18,6 +18,7 @@ viz = [
 [project.scripts]
 agent-tools = "agent_tools.run:main"
 agent-tools-mcp = "agent_tools.mcp_server:main"
+agent-validate = "agent_tools.validate:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["agent_tools"]

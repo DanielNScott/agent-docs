@@ -12,7 +12,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent
 REPO_DIR = SCRIPT_DIR.parent
 AGENTS_DIR = REPO_DIR / "agents"
-SHARED_FILE = AGENTS_DIR / "shared.md"
+
 WORKSPACE_DIR = SCRIPT_DIR / "workspace"
 
 # Path substitutions applied when building prompts for Docker.
@@ -106,19 +106,12 @@ def build_prompt(agent_type, task, project, session_uuid=None):
     if session_uuid is None:
         session_uuid = uuid.uuid4().hex[:8]
 
-    # Load and prepare instruction files
-    lifecycle = load_text(SHARED_FILE)
+    # Load and prepare agent instructions
     agent_text = strip_frontmatter(load_text(AGENTS_DIR / f"{agent_type}.md"))
-
-    # Apply docker path substitutions
-    lifecycle = apply_docker_paths(lifecycle, project)
     agent_text = apply_docker_paths(agent_text, project)
 
     # Assemble prompt
-    prompt = f"""{lifecycle}
-
----
-{agent_text}
+    prompt = f"""{agent_text}
 
 ---
 Agent Type: {agent_type}
