@@ -32,7 +32,7 @@ Prioritize in order:
 
 A checklist file will be provided at the path given in the task. Read it at the start of your session. For each checklist item, evaluate whether it is satisfied and mark it `[x]` (satisfied) or `[!]` (unsatisfied). Save the updated checklist when you write your report.
 
-If an audit report is provided as input, fix only the issues it identifies. Do not modify artifacts beyond what the report requires. When filling the checklist, still mark every item honestly -- use `[!]` for items you judge unsatisfied even if the audit did not mention them. The next audit cycle will review `[!]` items.
+If an audit report is provided as input, fix only the issues it identifies. Do not modify artifacts beyond what the report requires, with one exception: when a spec change alters a function's responsibilities, update the corresponding planning artifacts (`defuse.txt`, `revdeps.txt`, `callgraph.txt`, `contracts.txt`, `resources.txt`) to keep them consistent. When filling the checklist, still mark every item honestly -- use `[!]` for items you judge unsatisfied even if the audit did not mention them. The next audit cycle will review `[!]` items.
 
 Steps to implement:
 
@@ -69,4 +69,4 @@ Steps to implement:
    - under each step, write bullets addressing the design choices made and reasoning about how the step was satisfied
    - focus on rationale and trade-offs, not implementation details
    - if a step required no notable decisions, state that briefly
-   - save the filled checklist alongside the report
+   - update the checklist file in-place; do not create a separate copy

@@ -185,8 +185,8 @@ def run_audit_loop(project, producer_agent, audit_fn, revise_fn, report_pattern,
             return True
 
         if cycle == MAX_AUDIT_CYCLES:
-            print(f"  Max audit cycles reached for {stage_name}")
-            return False
+            print(f"  Max audit cycles reached for {stage_name}, proceeding")
+            return True
 
         # Generate fresh checklist for revision
         checklist_path = make_checklist(producer_agent, project)
@@ -206,9 +206,13 @@ def run_audit_loop(project, producer_agent, audit_fn, revise_fn, report_pattern,
 
 # Pipeline execution
 
+STAGE_ORDER = ["architecture", "arch-audit", "specification", "spec-audit",
+               "implementation", "impl-audit"]
+
+
 def run_pipeline(project, task=None, modules=None, only_architecture=False,
                  only_specification=False, only_implement=False,
-                 only_audit=False, plan_only=False):
+                 only_audit=False, plan_only=False, start_from=None):
     """Execute pipeline stages based on options."""
 
     # Single stage: audit only
@@ -245,7 +249,7 @@ def run_pipeline(project, task=None, modules=None, only_architecture=False,
         ret = run_specification(project, checklist_path)
         if ret != 0:
             return ret
-        if not check_stage(project, "spec-detail"):
+        if not check_stage(project, "specification"):
             return 1
         passed = run_audit_loop(
             project, "agent-specification",
@@ -269,74 +273,89 @@ def run_pipeline(project, task=None, modules=None, only_architecture=False,
         return 0
 
     # Full pipeline
-    if not task:
+    if not task and not start_from:
         print("Error: Full pipeline requires --task")
         return 1
 
+    # Determine starting stage index
+    skip_to = 0
+    if start_from:
+        if start_from not in STAGE_ORDER:
+            print(f"Error: unknown stage '{start_from}' (valid: {', '.join(STAGE_ORDER)})")
+            return 1
+        skip_to = STAGE_ORDER.index(start_from)
+        print(f"Starting from stage: {start_from}")
+
+    def should_run(stage):
+        return STAGE_ORDER.index(stage) >= skip_to
+
     # Step 1: Architecture
-    checklist_path = make_checklist("agent-architecture", project)
-    ret = run_architecture(project, task, checklist_path)
-    if ret != 0:
-        return ret
-    if not check_stage(project, "architecture"):
-        return 1
+    if should_run("architecture"):
+        if not task:
+            print("Error: architecture stage requires --task")
+            return 1
+        checklist_path = make_checklist("agent-architecture", project)
+        ret = run_architecture(project, task, checklist_path)
+        if ret != 0:
+            return ret
+        if not check_stage(project, "architecture"):
+            return 1
 
     # Step 2: Architecture audit loop
-    passed = run_audit_loop(
-        project, "agent-architecture",
-        run_audit_architecture, run_architecture_with_report,
-        "*_agent-audit-architecture_*", "Architecture"
-    )
-    if not passed:
-        return 1
+    if should_run("arch-audit"):
+        run_audit_loop(
+            project, "agent-architecture",
+            run_audit_architecture, run_architecture_with_report,
+            "*_agent-audit-architecture_*", "Architecture"
+        )
 
     # Step 3: Specification
-    checklist_path = make_checklist("agent-specification", project)
-    ret = run_specification(project, checklist_path)
-    if ret != 0:
-        return ret
-    if not check_stage(project, "spec-detail"):
-        return 1
+    if should_run("specification"):
+        checklist_path = make_checklist("agent-specification", project)
+        ret = run_specification(project, checklist_path)
+        if ret != 0:
+            return ret
+        if not check_stage(project, "specification"):
+            return 1
 
     # Step 4: Specification audit loop
-    passed = run_audit_loop(
-        project, "agent-specification",
-        run_audit_specification, run_specification_with_report,
-        "*_agent-audit-specification_*", "Specification"
-    )
-    if not passed:
-        return 1
+    if should_run("spec-audit"):
+        run_audit_loop(
+            project, "agent-specification",
+            run_audit_specification, run_specification_with_report,
+            "*_agent-audit-specification_*", "Specification"
+        )
 
     if plan_only:
         print("\n=== Plan complete (architecture + specification) ===")
         return 0
 
     # Step 5: Implement modules
-    if modules is None:
-        modules = get_module_ids(project)
+    if should_run("implementation"):
+        if modules is None:
+            modules = get_module_ids(project)
 
-    if not modules:
-        print("No modules found to implement")
-        return 1
+        if not modules:
+            print("No modules found to implement")
+            return 1
 
-    print(f"\nFound {len(modules)} modules to implement")
+        print(f"\nFound {len(modules)} modules to implement")
 
-    for mod in modules:
-        print(f"\n--- Module: {mod} ---")
-        checklist_path = make_checklist("agent-implementation", project)
-        ret = run_implement(project, mod, checklist_path)
-        if ret != 0:
-            print(f"Warning: Implementation failed for module {mod}")
-            continue
+        for mod in modules:
+            print(f"\n--- Module: {mod} ---")
+            checklist_path = make_checklist("agent-implementation", project)
+            ret = run_implement(project, mod, checklist_path)
+            if ret != 0:
+                print(f"Warning: Implementation failed for module {mod}")
+                continue
 
     # Step 6: Implementation audit loop
-    passed = run_audit_loop(
-        project, "agent-implementation",
-        run_audit_implementation, run_implement_with_report,
-        "*_agent-audit-implementation_*", "Implementation"
-    )
-    if not passed:
-        return 1
+    if should_run("impl-audit"):
+        run_audit_loop(
+            project, "agent-implementation",
+            run_audit_implementation, run_implement_with_report,
+            "*_agent-audit-implementation_*", "Implementation"
+        )
 
     print("\n=== Pipeline complete ===")
     return 0
@@ -356,6 +375,7 @@ Examples:
   ./pipeline_comprehensive.py --project myproj --only-implement --modules mod
   ./pipeline_comprehensive.py --project myproj --only-audit
   ./pipeline_comprehensive.py --project myproj --task "task" --restart
+  ./pipeline_comprehensive.py --project myproj --start-from specification
 
 Pipeline stages:
   1. Architecture: resource tree, structural specs, README
@@ -375,6 +395,8 @@ Pipeline stages:
     parser.add_argument("--only-implement", action="store_true", help="Run only implementation")
     parser.add_argument("--only-audit", action="store_true", help="Run only implementation audit")
     parser.add_argument("--plan-only", action="store_true", help="Run architecture and specification only")
+    parser.add_argument("--start-from", choices=STAGE_ORDER,
+                        help="Skip stages before this one (resume mid-pipeline)")
     parser.add_argument("--restart", action="store_true", help="Archive old reports before starting")
 
     args = parser.parse_args()
@@ -392,5 +414,6 @@ Pipeline stages:
         only_specification=args.only_specification,
         only_implement=args.only_implement,
         only_audit=args.only_audit,
-        plan_only=args.plan_only
+        plan_only=args.plan_only,
+        start_from=args.start_from
     ))

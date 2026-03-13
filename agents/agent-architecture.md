@@ -108,4 +108,4 @@ Steps to implement:
     - under each step, write bullets addressing the design choices made and reasoning about how the step was satisfied
     - focus on rationale and trade-offs, not implementation details
     - if a step required no notable decisions, state that briefly
-    - save the filled checklist alongside the report
+    - update the checklist file in-place; do not create a separate copy

@@ -6,6 +6,11 @@ Thin wrapper around agent_tools.validate, adding project-based path resolution.
 
 import sys
 import argparse
+from pathlib import Path
+
+# Add agent_tools package to path when not installed as a package
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "agent_tools"))
+
 from agent_tools.validate import validate_stage, get_modules_from_resources, get_modules_from_specs
 from claude_runner import WORKSPACE_DIR
 
