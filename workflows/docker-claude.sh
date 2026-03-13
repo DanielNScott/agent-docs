@@ -66,14 +66,16 @@ if [ -d "$CODE_ANALYSIS" ]; then
     VOLUME_ARGS+=(-v "$CODE_ANALYSIS:/data/code-analysis-tools:ro")
 fi
 
-# Reference projects (mount each REF_* variable that points to an existing directory)
-for var in $(compgen -v REF_); do
-    dir="${!var}"
-    if [ -d "$dir" ]; then
-        name=$(basename "$dir")
-        VOLUME_ARGS+=(-v "$dir:/data/reference/$name:ro")
-    fi
-done
+# Reference code (colon-separated list of paths, blank is valid)
+if [ -n "$REF_CODE_PATHS" ]; then
+    IFS=':' read -ra _ref_paths <<< "$REF_CODE_PATHS"
+    for dir in "${_ref_paths[@]}"; do
+        if [ -d "$dir" ]; then
+            name=$(basename "$dir")
+            VOLUME_ARGS+=(-v "$dir:/data/reference/$name:ro")
+        fi
+    done
+fi
 
 
 # Execute

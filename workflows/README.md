@@ -69,18 +69,22 @@ Comprehensive pipeline audit agents:
 
 ## Configuration
 
-docker-claude.sh sources a `.env` file from the project root for host-specific paths. Copy `.env.example` or create `.env` with the following variables:
+docker-claude.sh sources a `.env` file from `workflows/` for host-specific paths. Copy `.env.template` to `.env` and fill in:
 
 ```
+ANTHROPIC_API_KEY=""
 AGENT_DOCS="/path/to/agent-docs"
 CODE_ANALYSIS="/path/to/code-analysis-tools"
-REF_SIMPLIFIED_LEIA="/path/to/simplified-leia"
-REF_HELICOPTER_PSYCHOMETRICS="/path/to/helicopter-psychometrics"
-REF_COGNEE_INDUSTRY_BAYER="/path/to/cognee-industry-bayer/bayer"
-REF_CUSTOM_SRE="/path/to/custom-sre"
+REF_CODE_PATHS="/path/to/project-a:/path/to/project-b"
 ```
 
-AGENT_DOCS and CODE_ANALYSIS are mounted at /data/agent-docs/ and /data/code-analysis-tools/ respectively. Any variable prefixed with REF_ that points to an existing directory is mounted read-only at /data/reference/<dirname>. The .env file is gitignored.
+Authentication uses `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` (falls back to extracting OAuth from `~/.claude/.credentials.json`). All variables can be left blank or omitted. The .env file is gitignored.
+
+Mount status:
+
+- AGENT_DOCS -- active, mounted at /data/agent-docs/, referenced by agent prompts via path substitution in claude_runner.py
+- CODE_ANALYSIS -- plumbed, mounted at /data/code-analysis-tools/ but not yet referenced by any agent prompt (future use)
+- REF_CODE_PATHS -- plumbed, colon-separated list of directories mounted read-only at /data/reference/<dirname>, not yet referenced by any agent prompt (future use)
 
 ## Directories
 
