@@ -28,6 +28,41 @@ LOOP_STAGES = {
     "implementation": ("implementation", "impl-audit"),
 }
 
+# Each stage group defines agent names, task parts, and validation stage.
+STAGE_CONFIG = {
+    "architecture": {
+        "agent":       "agent-architecture",
+        "audit_agent": "agent-audit-architecture",
+        "task_part":   lambda task: f"task={task}",
+        "validate":    "architecture",
+        "label":       "Architecture",
+        "requires_task": True,
+    },
+    "specification": {
+        "agent":       "agent-specification",
+        "audit_agent": "agent-audit-specification",
+        "task_part":   lambda task: "write function specifications",
+        "validate":    "specification",
+        "label":       "Specification",
+        "requires_task": False,
+    },
+    "implementation": {
+        "agent":       "agent-implementation",
+        "audit_agent": "agent-audit-implementation",
+        "task_part":   None,
+        "validate":    None,
+        "label":       "Implementation",
+        "requires_task": False,
+    },
+}
+
+# Map stage names to config keys
+STAGE_TO_CONFIG = {
+    "architecture": "architecture", "arch-audit": "architecture",
+    "specification": "specification", "spec-audit": "specification",
+    "implementation": "implementation", "impl-audit": "implementation",
+}
+
 
 def parse_module_spec(spec):
     """Parse module specification: single name or comma-separated list."""
@@ -69,87 +104,20 @@ def make_checklist(agent_name, project):
     return f"/workspace/reports/{path.name}"
 
 
-# Stage runners
+# Stage runner
 
-def run_architecture(project, task, checklist_path=None):
-    """Run architecture agent."""
-    print("=== Running Architecture ===")
-    parts = [f"task={task}"]
+def run_stage(agent_name, task_part, project, label=None):
+    """Run a single agent invocation with checklist."""
+    if label:
+        print(f"=== {label} ===")
+
+    # Generate checklist
+    checklist_path = make_checklist(agent_name, project)
+    parts = [task_part]
     if checklist_path:
         parts.append(f"checklist={checklist_path}")
-    return run_agent("agent-architecture", ", ".join(parts), project)
 
-
-def run_architecture_with_report(project, report_path, checklist_path=None):
-    """Re-run architecture agent with an audit report."""
-    print("=== Running Architecture (revision) ===")
-    parts = [f"report=/workspace/reports/{report_path.name}"]
-    if checklist_path:
-        parts.append(f"checklist={checklist_path}")
-    return run_agent("agent-architecture", ", ".join(parts), project)
-
-
-def run_audit_architecture(project, checklist_path=None):
-    """Run architecture audit agent."""
-    print("=== Running Architecture Audit ===")
-    parts = ["audit"]
-    if checklist_path:
-        parts.append(f"checklist={checklist_path}")
-    return run_agent("agent-audit-architecture", ", ".join(parts), project)
-
-
-def run_specification(project, checklist_path=None):
-    """Run specification agent."""
-    print("=== Running Specification ===")
-    parts = ["write function specifications"]
-    if checklist_path:
-        parts.append(f"checklist={checklist_path}")
-    return run_agent("agent-specification", ", ".join(parts), project)
-
-
-def run_specification_with_report(project, report_path, checklist_path=None):
-    """Re-run specification agent with an audit report."""
-    print("=== Running Specification (revision) ===")
-    parts = [f"report=/workspace/reports/{report_path.name}"]
-    if checklist_path:
-        parts.append(f"checklist={checklist_path}")
-    return run_agent("agent-specification", ", ".join(parts), project)
-
-
-def run_audit_specification(project, checklist_path=None):
-    """Run specification audit agent."""
-    print("=== Running Specification Audit ===")
-    parts = ["audit"]
-    if checklist_path:
-        parts.append(f"checklist={checklist_path}")
-    return run_agent("agent-audit-specification", ", ".join(parts), project)
-
-
-def run_implement(project, module_name, checklist_path=None):
-    """Implement a specific module."""
-    print(f"=== Implementing Module: {module_name} ===")
-    parts = [f"module={module_name}"]
-    if checklist_path:
-        parts.append(f"checklist={checklist_path}")
-    return run_agent("agent-implementation", ", ".join(parts), project)
-
-
-def run_implement_with_report(project, report_path, checklist_path=None):
-    """Re-run implementation agent with an audit report."""
-    print("=== Running Implementation (revision) ===")
-    parts = [f"report=/workspace/reports/{report_path.name}"]
-    if checklist_path:
-        parts.append(f"checklist={checklist_path}")
-    return run_agent("agent-implementation", ", ".join(parts), project)
-
-
-def run_audit_implementation(project, checklist_path=None):
-    """Run implementation audit agent."""
-    print("=== Running Implementation Audit ===")
-    parts = ["audit"]
-    if checklist_path:
-        parts.append(f"checklist={checklist_path}")
-    return run_agent("agent-audit-implementation", ", ".join(parts), project)
+    return run_agent(agent_name, ", ".join(parts), project)
 
 
 def check_stage(project, stage):
@@ -166,106 +134,73 @@ def check_stage(project, stage):
 
 # Audit loop
 
-def run_audit_loop(project, producer_agent, audit_fn, revise_fn, report_pattern, stage_name):
-    """Run audit-revise loop until pass or max cycles reached.
-
-    The producer_agent's most recent checklist is passed to the audit agent.
-    On revision, a fresh checklist is generated for the production agent.
-    """
-    # Find the checklist left by the most recent production run
-    checklist_report = find_latest_report(f"*_checklist_{producer_agent}*", project)
-    checklist_path = f"/workspace/reports/{checklist_report.name}" if checklist_report else None
+def run_audit_loop(project, config):
+    """Run audit-revise loop until pass or max cycles reached. Returns 0 or 1."""
+    agent = config["agent"]
+    audit_agent = config["audit_agent"]
+    label = config["label"]
 
     for cycle in range(1, MAX_AUDIT_CYCLES + 1):
-        print(f"\n--- {stage_name} audit cycle {cycle}/{MAX_AUDIT_CYCLES} ---")
+        print(f"\n--- {label} audit cycle {cycle}/{MAX_AUDIT_CYCLES} ---")
 
-        # Run audit with the production agent's filled checklist
-        ret = audit_fn(project, checklist_path)
+        # Run audit
+        ret = run_stage(audit_agent, "audit", project, f"Running {label} Audit")
         if ret != 0:
             print(f"  Audit agent failed (exit {ret})")
-            return False
+            return 1
 
         # Find and check verdict
-        report = find_latest_report(report_pattern, project)
+        report = find_latest_report(f"*_{audit_agent}_*", project)
         if report is None:
             print("  No audit report found")
-            return False
+            return 1
 
         verdict = get_verdict(report)
         print(f"  Verdict: {verdict}")
 
         if verdict == "pass":
-            return True
+            return 0
 
         if cycle == MAX_AUDIT_CYCLES:
-            print(f"  Max audit cycles reached for {stage_name}, proceeding")
-            return True
+            print(f"  Max audit cycles reached for {label}, proceeding")
+            return 0
 
-        # Generate fresh checklist for revision
-        checklist_path = make_checklist(producer_agent, project)
-
-        # Revise
-        ret = revise_fn(project, report, checklist_path)
+        # Revise with audit report
+        report_ref = f"report=/workspace/reports/{report.name}"
+        ret = run_stage(agent, report_ref, project, f"Running {label} (revision)")
         if ret != 0:
             print(f"  Revision failed (exit {ret})")
-            return False
+            return 1
 
-        # Update checklist path to the one just filled by the revision
-        checklist_report = find_latest_report(f"*_checklist_{producer_agent}*", project)
-        checklist_path = f"/workspace/reports/{checklist_report.name}" if checklist_report else None
-
-    return False
+    return 1
 
 
-# Individual stage execution
+# Pipeline execution
 
-def execute_architecture(project, task, modules):
-    """Run architecture production stage."""
-    if not task:
-        print("Error: architecture stage requires --task")
-        return 1
-    checklist_path = make_checklist("agent-architecture", project)
-    ret = run_architecture(project, task, checklist_path)
-    if ret != 0:
-        return ret
-    if not check_stage(project, "architecture"):
-        return 1
-    return 0
+def run_stage_by_name(stage, project, task, modules):
+    """Execute a single named stage. Returns 0 on success, 1 on failure."""
+    config = STAGE_CONFIG[STAGE_TO_CONFIG[stage]]
 
+    # Audit stages
+    if stage.endswith("-audit"):
+        return run_audit_loop(project, config)
 
-def execute_arch_audit(project, task, modules):
-    """Run architecture audit-revise loop."""
-    passed = run_audit_loop(
-        project, "agent-architecture",
-        run_audit_architecture, run_architecture_with_report,
-        "*_agent-audit-architecture_*", "Architecture"
-    )
-    return 0 if passed else 1
+    # Production: architecture and specification
+    if stage in ("architecture", "specification"):
+        if config["requires_task"] and not task:
+            print(f"Error: {stage} stage requires --task")
+            return 1
 
+        task_part = config["task_part"](task)
+        ret = run_stage(config["agent"], task_part, project, f"Running {config['label']}")
+        if ret != 0:
+            return ret
 
-def execute_specification(project, task, modules):
-    """Run specification production stage."""
-    checklist_path = make_checklist("agent-specification", project)
-    ret = run_specification(project, checklist_path)
-    if ret != 0:
-        return ret
-    if not check_stage(project, "specification"):
-        return 1
-    return 0
+        if config["validate"] and not check_stage(project, config["validate"]):
+            return 1
+        return 0
 
-
-def execute_spec_audit(project, task, modules):
-    """Run specification audit-revise loop."""
-    passed = run_audit_loop(
-        project, "agent-specification",
-        run_audit_specification, run_specification_with_report,
-        "*_agent-audit-specification_*", "Specification"
-    )
-    return 0 if passed else 1
-
-
-def execute_implementation(project, task, modules):
-    """Run implementation for all modules."""
+    # Production: implementation (per-module loop)
     if modules is None:
         modules = get_module_ids(project)
     if not modules:
@@ -273,39 +208,14 @@ def execute_implementation(project, task, modules):
         return 1
 
     print(f"\nFound {len(modules)} modules to implement")
-
     for mod in modules:
         print(f"\n--- Module: {mod} ---")
-        checklist_path = make_checklist("agent-implementation", project)
-        ret = run_implement(project, mod, checklist_path)
+        ret = run_stage(config["agent"], f"module={mod}", project, f"Implementing Module: {mod}")
         if ret != 0:
             print(f"Warning: Implementation failed for module {mod}")
             continue
     return 0
 
-
-def execute_impl_audit(project, task, modules):
-    """Run implementation audit-revise loop."""
-    passed = run_audit_loop(
-        project, "agent-implementation",
-        run_audit_implementation, run_implement_with_report,
-        "*_agent-audit-implementation_*", "Implementation"
-    )
-    return 0 if passed else 1
-
-
-# Stage dispatch table
-STAGE_EXECUTORS = {
-    "architecture":   execute_architecture,
-    "arch-audit":     execute_arch_audit,
-    "specification":  execute_specification,
-    "spec-audit":     execute_spec_audit,
-    "implementation": execute_implementation,
-    "impl-audit":     execute_impl_audit,
-}
-
-
-# Pipeline execution
 
 def run_pipeline(project, task=None, modules=None, only=None,
                  only_loop=None, start_from=None, stop_before=None):
@@ -313,16 +223,15 @@ def run_pipeline(project, task=None, modules=None, only=None,
 
     # --only: run exactly one stage
     if only:
-        executor = STAGE_EXECUTORS[only]
-        return executor(project, task, modules)
+        return run_stage_by_name(only, project, task, modules)
 
-    # --only-*-loop: run produce + audit for one stage group
+    # --only-loop: run produce + audit for one stage group
     if only_loop:
         produce_stage, audit_stage = LOOP_STAGES[only_loop]
-        ret = STAGE_EXECUTORS[produce_stage](project, task, modules)
+        ret = run_stage_by_name(produce_stage, project, task, modules)
         if ret != 0:
             return ret
-        return STAGE_EXECUTORS[audit_stage](project, task, modules)
+        return run_stage_by_name(audit_stage, project, task, modules)
 
     # Full pipeline (with optional --start-from and --stop-before)
     if not task and not start_from:
@@ -347,7 +256,7 @@ def run_pipeline(project, task=None, modules=None, only=None,
 
     # Execute stages in range
     for stage in STAGE_ORDER[start_idx:stop_idx]:
-        ret = STAGE_EXECUTORS[stage](project, task, modules)
+        ret = run_stage_by_name(stage, project, task, modules)
         if ret != 0:
             return ret
 
@@ -415,11 +324,6 @@ Pipeline stages (in order):
     args = parser.parse_args()
 
     # Validate mutually exclusive mode flags
-    mode_count = sum([
-        args.only is not None,
-        args.only_loop is not None,
-        args.start_from is not None or args.stop_before is not None,
-    ])
     if args.only and (args.start_from or args.stop_before):
         parser.error("--only cannot be combined with --start-from or --stop-before")
     if args.only_loop and (args.start_from or args.stop_before):

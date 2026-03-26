@@ -145,8 +145,18 @@ def _is_rate_limited(output):
     return any(p in lower for p in RATE_LIMIT_PATTERNS)
 
 
-def run_agent(agent_type, task, project):
+def run_agent(agent_type, task, project, force_accept_project=False):
     """Run a Claude agent with retry on rate limits."""
+
+    # Guard against path separators in project name
+    if "/" in project and not force_accept_project:
+        raise ValueError(
+            f"--project must be a bare name, not a path (got '{project}').\n"
+            f"  Outside Docker: --project is relative to workspace/.\n"
+            f"  Inside Docker:  working directory is already /workspace/{{project}}.\n"
+            f"  To bypass: pass force_accept_project=True or --force-accept-project."
+        )
+
     prompt = build_prompt(agent_type, task, project)
     cmd = [str(SCRIPT_DIR / "docker-claude.sh"), project, prompt]
 

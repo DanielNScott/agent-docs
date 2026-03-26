@@ -98,6 +98,8 @@ Mount status:
 
 Each pipeline run targets a named project subdirectory under workspace/. The Docker container mounts only that project's directory as /workspace, so agents from different pipeline runs cannot interfere with each other. Reports, planning artifacts, and code all live within the project directory.
 
+The --project argument must be a bare name (e.g. `myproj`), not a path with slashes. Both the shell wrapper and Python runner reject paths to prevent accidental directory nesting. Set `FORCE_ACCEPT_PROJECT=1` to bypass when needed for internal worker dispatch.
+
 ## Usage
 
 All pipelines require --project to specify the workspace subdirectory.

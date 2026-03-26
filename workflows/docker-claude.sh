@@ -24,6 +24,19 @@ if [ -z "$PROJECT" ]; then
     exit 1
 fi
 
+# Reject project names containing path separators to prevent nested-directory bugs.
+# From outside Docker, --project is a bare name relative to workspace/.
+# From inside Docker, the working directory is already /workspace/{project}.
+# Use --force-accept-project to bypass (e.g. when a worker assigns internally).
+FORCE_ACCEPT="${FORCE_ACCEPT_PROJECT:-0}"
+if [ "$FORCE_ACCEPT" != "1" ] && [[ "$PROJECT" == */* ]]; then
+    echo "Error: --project must be a bare name, not a path (got '$PROJECT')." >&2
+    echo "  Outside Docker: --project is relative to workspace/." >&2
+    echo "  Inside Docker:  working directory is already /workspace/{project}." >&2
+    echo "  To bypass: export FORCE_ACCEPT_PROJECT=1" >&2
+    exit 1
+fi
+
 PROJECT_DIR="$WORKSPACE/$PROJECT"
 mkdir -p "$PROJECT_DIR/reports"
 
