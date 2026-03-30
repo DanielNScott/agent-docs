@@ -5,10 +5,15 @@ Runs architecture, specification, and implementation agents in sequence,
 with audit agents providing review loops at each stage.
 """
 
-import re
 import argparse
-from claude_runner import run_agent, find_latest_report, archive_reports
-from claude_runner import WORKSPACE_DIR
+from claude_runner import (
+    run_agent,
+    find_latest_report,
+    archive_reports,
+    get_reports_dir,
+    get_verdict,
+    WORKSPACE_DIR,
+)
 from validate import validate_stage_by_project as validate_stage, get_modules_from_specs
 from generate_checklist import generate_checklist_file
 
@@ -16,9 +21,12 @@ from generate_checklist import generate_checklist_file
 MAX_AUDIT_CYCLES = 3
 
 STAGE_ORDER = [
-    "architecture", "arch-audit",
-    "specification", "spec-audit",
-    "implementation", "impl-audit",
+    "architecture",
+    "arch-audit",
+    "specification",
+    "spec-audit",
+    "implementation",
+    "impl-audit",
 ]
 
 # Stages that count as "loop" groupings (produce + audit)
@@ -31,36 +39,39 @@ LOOP_STAGES = {
 # Each stage group defines agent names, task parts, and validation stage.
 STAGE_CONFIG = {
     "architecture": {
-        "agent":       "agent-architecture",
+        "agent": "agent-architecture",
         "audit_agent": "agent-audit-architecture",
-        "task_part":   lambda task: f"task={task}",
-        "validate":    "architecture",
-        "label":       "Architecture",
+        "task_part": lambda task: f"task={task}",
+        "validate": "architecture",
+        "label": "Architecture",
         "requires_task": True,
     },
     "specification": {
-        "agent":       "agent-specification",
+        "agent": "agent-specification",
         "audit_agent": "agent-audit-specification",
-        "task_part":   lambda task: "write function specifications",
-        "validate":    "specification",
-        "label":       "Specification",
+        "task_part": lambda task: "write function specifications",
+        "validate": "specification",
+        "label": "Specification",
         "requires_task": False,
     },
     "implementation": {
-        "agent":       "agent-implementation",
+        "agent": "agent-implementation",
         "audit_agent": "agent-audit-implementation",
-        "task_part":   None,
-        "validate":    None,
-        "label":       "Implementation",
+        "task_part": None,
+        "validate": None,
+        "label": "Implementation",
         "requires_task": False,
     },
 }
 
 # Map stage names to config keys
 STAGE_TO_CONFIG = {
-    "architecture": "architecture", "arch-audit": "architecture",
-    "specification": "specification", "spec-audit": "specification",
-    "implementation": "implementation", "impl-audit": "implementation",
+    "architecture": "architecture",
+    "arch-audit": "architecture",
+    "specification": "specification",
+    "spec-audit": "specification",
+    "implementation": "implementation",
+    "impl-audit": "implementation",
 }
 
 
@@ -77,22 +88,6 @@ def get_module_ids(project):
     return get_modules_from_specs(planning_dir)
 
 
-def get_verdict(report_path):
-    """Extract verdict (pass/revise) from an audit report."""
-    if report_path is None:
-        return None
-    text = report_path.read_text()
-    match = re.search(r'##\s+Verdict\s*\n+\s*(pass|revise)', text, re.IGNORECASE)
-    if match:
-        return match.group(1).lower()
-    return None
-
-
-def get_reports_dir(project):
-    """Return reports directory for a project."""
-    return WORKSPACE_DIR / project / "reports"
-
-
 def make_checklist(agent_name, project):
     """Generate a fresh checklist for an agent. Returns docker-relative path."""
     reports_dir = get_reports_dir(project)
@@ -105,6 +100,7 @@ def make_checklist(agent_name, project):
 
 
 # Stage runner
+
 
 def run_stage(agent_name, task_part, project, label=None):
     """Run a single agent invocation with checklist."""
@@ -133,6 +129,7 @@ def check_stage(project, stage):
 
 
 # Audit loop
+
 
 def run_audit_loop(project, config):
     """Run audit-revise loop until pass or max cycles reached. Returns 0 or 1."""
@@ -177,6 +174,7 @@ def run_audit_loop(project, config):
 
 # Pipeline execution
 
+
 def run_stage_by_name(stage, project, task, modules):
     """Execute a single named stage. Returns 0 on success, 1 on failure."""
     config = STAGE_CONFIG[STAGE_TO_CONFIG[stage]]
@@ -192,7 +190,9 @@ def run_stage_by_name(stage, project, task, modules):
             return 1
 
         task_part = config["task_part"](task)
-        ret = run_stage(config["agent"], task_part, project, f"Running {config['label']}")
+        ret = run_stage(
+            config["agent"], task_part, project, f"Running {config['label']}"
+        )
         if ret != 0:
             return ret
 
@@ -210,15 +210,24 @@ def run_stage_by_name(stage, project, task, modules):
     print(f"\nFound {len(modules)} modules to implement")
     for mod in modules:
         print(f"\n--- Module: {mod} ---")
-        ret = run_stage(config["agent"], f"module={mod}", project, f"Implementing Module: {mod}")
+        ret = run_stage(
+            config["agent"], f"module={mod}", project, f"Implementing Module: {mod}"
+        )
         if ret != 0:
             print(f"Warning: Implementation failed for module {mod}")
             continue
     return 0
 
 
-def run_pipeline(project, task=None, modules=None, only=None,
-                 only_loop=None, start_from=None, stop_before=None):
+def run_pipeline(
+    project,
+    task=None,
+    modules=None,
+    only=None,
+    only_loop=None,
+    start_from=None,
+    stop_before=None,
+):
     """Execute pipeline stages based on options."""
 
     # --only: run exactly one stage
@@ -251,7 +260,9 @@ def run_pipeline(project, task=None, modules=None, only=None,
         print(f"Stopping before stage: {stop_before}")
 
     if start_idx >= stop_idx:
-        print(f"Error: --start-from {start_from} is at or after --stop-before {stop_before}")
+        print(
+            f"Error: --start-from {start_from} is at or after --stop-before {stop_before}"
+        )
         return 1
 
     # Execute stages in range
@@ -265,7 +276,6 @@ def run_pipeline(project, task=None, modules=None, only=None,
 
 
 if __name__ == "__main__":
-
     # Build loop flag names from LOOP_STAGES keys
     loop_choices = list(LOOP_STAGES.keys())
 
@@ -301,25 +311,31 @@ Pipeline stages (in order):
   spec-audit      Specification audit-revise loop
   implementation  Code from specifications, per module
   impl-audit      Implementation audit-revise loop
-"""
+""",
     )
 
-    parser.add_argument("--project", required=True,
-                        help="Project name (workspace subdirectory)")
-    parser.add_argument("--task",
-                        help="Development task description")
-    parser.add_argument("--modules",
-                        help="Module name(s), comma-separated")
-    parser.add_argument("--only", choices=STAGE_ORDER,
-                        help="Run exactly one stage")
-    parser.add_argument("--only-loop", choices=loop_choices,
-                        help="Run one produce + audit loop (architecture, specification, implementation)")
-    parser.add_argument("--start-from", choices=STAGE_ORDER,
-                        help="Start full pipeline from this stage")
-    parser.add_argument("--stop-before", choices=STAGE_ORDER,
-                        help="Stop full pipeline before this stage")
-    parser.add_argument("--restart", action="store_true",
-                        help="Archive old reports before starting")
+    parser.add_argument(
+        "--project", required=True, help="Project name (workspace subdirectory)"
+    )
+    parser.add_argument("--task", help="Development task description")
+    parser.add_argument("--modules", help="Module name(s), comma-separated")
+    parser.add_argument("--only", choices=STAGE_ORDER, help="Run exactly one stage")
+    parser.add_argument(
+        "--only-loop",
+        choices=loop_choices,
+        help="Run one produce + audit loop (architecture, specification, implementation)",
+    )
+    parser.add_argument(
+        "--start-from", choices=STAGE_ORDER, help="Start full pipeline from this stage"
+    )
+    parser.add_argument(
+        "--stop-before",
+        choices=STAGE_ORDER,
+        help="Stop full pipeline before this stage",
+    )
+    parser.add_argument(
+        "--restart", action="store_true", help="Archive old reports before starting"
+    )
 
     args = parser.parse_args()
 
@@ -327,7 +343,9 @@ Pipeline stages (in order):
     if args.only and (args.start_from or args.stop_before):
         parser.error("--only cannot be combined with --start-from or --stop-before")
     if args.only_loop and (args.start_from or args.stop_before):
-        parser.error("--only-loop cannot be combined with --start-from or --stop-before")
+        parser.error(
+            "--only-loop cannot be combined with --start-from or --stop-before"
+        )
     if args.only and args.only_loop:
         parser.error("--only and --only-loop are mutually exclusive")
 
@@ -336,12 +354,14 @@ Pipeline stages (in order):
 
     modules = parse_module_spec(args.modules)
 
-    exit(run_pipeline(
-        project=args.project,
-        task=args.task,
-        modules=modules,
-        only=args.only,
-        only_loop=args.only_loop,
-        start_from=args.start_from,
-        stop_before=args.stop_before,
-    ))
+    exit(
+        run_pipeline(
+            project=args.project,
+            task=args.task,
+            modules=modules,
+            only=args.only,
+            only_loop=args.only_loop,
+            start_from=args.start_from,
+            stop_before=args.stop_before,
+        )
+    )
