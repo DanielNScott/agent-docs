@@ -27,9 +27,28 @@ install:
 		ln -sfn "$$skill" "$(SKILLS_DIR)/agent-infra-$$(basename $$skill)"; \
 	done
 	@printf "\n"
-	@printf "$(BOLD)[4/7] Generating $(CLAUDE_DIR)/agent-infra-claude.md from agent_docs/claude.md...$(RESET)\n"
-	@printf "  sed s|AGENT_INFRA_DIR|$(REPO_DIR)|g\n"
-	@sed 's|AGENT_INFRA_DIR|$(REPO_DIR)|g' $(REPO_DIR)/agent_docs/claude.md > $(CLAUDE_DIR)/agent-infra-claude.md
+	@printf "$(BOLD)[4/7] Installing CLAUDE.md into $(CLAUDE_DIR)...$(RESET)\n"
+	@CONTENT=$$(mktemp); \
+	sed 's|AGENT_INFRA_DIR|$(REPO_DIR)|g' $(REPO_DIR)/agent_docs/claude.md > "$$CONTENT"; \
+	printf "\n" >> "$$CONTENT"; \
+	cat $(REPO_DIR)/agent_docs/code-style-short.md >> "$$CONTENT"; \
+	if [ -f $(CLAUDE_DIR)/CLAUDE.md ]; then \
+		printf "  $(CLAUDE_DIR)/CLAUDE.md already exists.\n"; \
+		printf "  [r]eplace  [a]ppend  [s]kip: "; \
+		read choice; \
+		case "$$choice" in \
+			r) cp "$$CONTENT" $(CLAUDE_DIR)/CLAUDE.md; \
+			   printf "  Replaced $(CLAUDE_DIR)/CLAUDE.md\n" ;; \
+			a) printf "\n" >> $(CLAUDE_DIR)/CLAUDE.md; \
+			   cat "$$CONTENT" >> $(CLAUDE_DIR)/CLAUDE.md; \
+			   printf "  Appended to $(CLAUDE_DIR)/CLAUDE.md\n" ;; \
+			*) printf "  Skipped CLAUDE.md setup\n" ;; \
+		esac; \
+	else \
+		cp "$$CONTENT" $(CLAUDE_DIR)/CLAUDE.md; \
+		printf "  Created $(CLAUDE_DIR)/CLAUDE.md\n"; \
+	fi; \
+	rm -f "$$CONTENT"
 	@printf "\n"
 	@printf "$(BOLD)[5/7] Generating $(CLAUDE_DIR)/agent-infra-startup.sh from agent-infra-startup.sh...$(RESET)\n"
 	@printf "  sed s|AGENT_INFRA_DIR|$(REPO_DIR)|g\n"
@@ -57,9 +76,18 @@ uninstall:
 	@printf "  rm -f $(SKILLS_DIR)/agent-infra-*\n"
 	@rm -f $(SKILLS_DIR)/agent-infra-*
 	@printf "\n"
-	@printf "$(BOLD)[4/7] Removing $(CLAUDE_DIR)/agent-infra-claude.md...$(RESET)\n"
-	@printf "  rm -f $(CLAUDE_DIR)/agent-infra-claude.md\n"
+	@printf "$(BOLD)[4/7] Cleaning up CLAUDE.md...$(RESET)\n"
 	@rm -f $(CLAUDE_DIR)/agent-infra-claude.md
+	@if [ -f $(CLAUDE_DIR)/CLAUDE.md ]; then \
+		printf "  $(CLAUDE_DIR)/CLAUDE.md may contain agent-infra content.\n"; \
+		printf "  [d]elete  [s]kip: "; \
+		read choice; \
+		case "$$choice" in \
+			d) rm -f $(CLAUDE_DIR)/CLAUDE.md; \
+			   printf "  Deleted $(CLAUDE_DIR)/CLAUDE.md\n" ;; \
+			*) printf "  Skipped. Review manually if needed.\n" ;; \
+		esac; \
+	fi
 	@printf "\n"
 	@printf "$(BOLD)[5/7] Removing $(CLAUDE_DIR)/agent-infra-startup.sh...$(RESET)\n"
 	@printf "  rm -f $(CLAUDE_DIR)/agent-infra-startup.sh\n"
