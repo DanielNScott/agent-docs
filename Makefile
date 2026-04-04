@@ -30,8 +30,6 @@ install:
 	@printf "$(BOLD)[4/7] Installing CLAUDE.md into $(CLAUDE_DIR)...$(RESET)\n"
 	@CONTENT=$$(mktemp); \
 	sed 's|AGENT_INFRA_DIR|$(REPO_DIR)|g' $(REPO_DIR)/agent_docs/claude.md > "$$CONTENT"; \
-	printf "\n" >> "$$CONTENT"; \
-	cat $(REPO_DIR)/agent_docs/code-style-short.md >> "$$CONTENT"; \
 	if [ -f $(CLAUDE_DIR)/CLAUDE.md ]; then \
 		printf "  $(CLAUDE_DIR)/CLAUDE.md already exists.\n"; \
 		printf "  [r]eplace  [a]ppend  [s]kip: "; \

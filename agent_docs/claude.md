@@ -60,19 +60,21 @@ If you are writing an academic manuscript, please consult:
 
 ## Resuming a project
 
-If you have just been directed to read this file or the agent-infra directory please also do the following:
+If you are starting or resuming work on a project, please:
 - Read the file AGENT_INFRA_DIR/agent_docs/code-style-short.md
 - run `agent-tools --tree --depth 4 [dir]` on the project directory
-- examine the resource tree you observe to understand implementation of this current project
+- examine the resource tree you observe to understand implementation
+- Read all local README.md files.
 
 Report back with:
+- Confirmation that you've completed startup instructions (short bullet list)
 - A 1-3 sentance summary of the purpose of the working directory codebase
 - If obviously incomplete, list 1-5 direct steps toward completion
 - If mostly complete, ask for user priorities
 
 Do not add more to the report back.
 
-## Investigating another project
+## Investigating a project
 
 When investigating a project folder:
 - Run `agent-tools --tree --depth 4 [directory]` 

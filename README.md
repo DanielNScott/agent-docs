@@ -1,6 +1,6 @@
 # Agent-infra
 
-This repository provides a reusable infrastructure layer for Claude Code projects. It installs once and applies everywhere. As a result, Claude receives claude.md style instructions, code-style instructions, and project orientation on startup, along with command line tools via MCP for code analysis, and document templates. The same tools are exported as skills to the user. A separate Docker-based workflow layer orchestrates multi-agent pipelines for autonomous project development.
+This repository provides a reusable infrastructure layer for Claude Code projects. It installs once and applies everywhere. As a result, Claude receives style instructions and code style guidelines on startup, along with command line tools via MCP for code analysis, and document templates. The same tools are exported as skills to the user. A separate Docker-based workflow layer orchestrates multi-agent pipelines for autonomous project development.
 
 ## How It Works
 
@@ -9,7 +9,7 @@ Installation...
 - installs an `agent-tools` CLI via `uv tool install`
 - copies agents to `~/.claude/agents/agent-infra/` with paths resolved
 - symlinks skills into `~/.claude/skills/`
-- installs `claude.md` and `code-style-short.md` into `~/.claude/CLAUDE.md`
+- installs `claude.md` into `~/.claude/CLAUDE.md`
 - registers the MCP server in `~/.claude/settings.json`
 - registers the SessionStart hook in `~/.claude/settings.json`
 
@@ -20,7 +20,7 @@ As a result:
   - a set of skills is available via `/agent-infra-{skill}`
   - skills and the MCP link to templates and code tools
 
-The SessionStart hook runs agent-infra-startup.sh, which shows Claude the directory structure for the current project.
+The SessionStart hook runs agent-infra-startup.sh, which can be extended with tool calls to run on session start.
 
 Separately, `workflows/` provides Docker-based pipelines that run agents autonomously. These do not require installation — they use `docker-claude.sh` to dispatch agents into isolated containers with project workspaces mounted in.
 
@@ -51,7 +51,7 @@ Separately, `workflows/` provides Docker-based pipelines that run agents autonom
 `agent_docs` contains instruction and template files that Claude loads at session start.
 
 - `claude.md` top-level instruction file installed into `~/.claude/CLAUDE.md`
-- `code-style-short.md` coding style guidelines installed into `~/.claude/CLAUDE.md`
+- `code-style-short.md` coding style guidelines, instructed via `claude.md`
 - `packages.md` package structure and separation of concerns guidelines
 - `planning.md` planning guidelines for whole-project tasks
 - `writing-style.md` academic manuscript style guidelines
