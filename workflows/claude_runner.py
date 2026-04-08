@@ -4,7 +4,12 @@ Claude agent runner.
 Builds prompts from lifecycle and agent configs, dispatches to Docker.
 """
 
-import subprocess, uuid, re, shutil, time, os
+import subprocess
+import uuid
+import re
+import shutil
+import time
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -25,12 +30,14 @@ DOCKER_PATH_SUBS = [
 
 # Project-scoped directories
 
+
 def get_reports_dir(project):
     """Return reports directory for a project."""
     return WORKSPACE_DIR / project / "reports"
 
 
 # File utilities
+
 
 def find_latest_report(pattern, project):
     """Find most recent file matching glob pattern in project reports directory."""
@@ -51,7 +58,20 @@ def load_text(path):
 def get_ids_from_report(path, prefix="Issue"):
     """Extract integer IDs from markdown headings like '## Issue 1: ...'."""
     text = path.read_text()
-    return [int(m) for m in re.findall(rf'^##\s+{prefix}\s+(\d+)', text, re.MULTILINE)]
+    return [int(m) for m in re.findall(rf"^##\s+{prefix}\s+(\d+)", text, re.MULTILINE)]
+
+
+def get_verdict(report_path):
+    """Extract first word after '## Verdict' heading from a report."""
+    if report_path is None:
+        return None
+    text = report_path.read_text()
+    match = re.search(
+        r"^##\s+Verdict\s*\n+\s*(\w+)", text, re.MULTILINE | re.IGNORECASE
+    )
+    if match:
+        return match.group(1).lower()
+    return None
 
 
 def archive_reports(project):
@@ -79,12 +99,13 @@ def archive_reports(project):
 
 # Prompt assembly
 
+
 def strip_frontmatter(text):
     """Strip YAML frontmatter block from markdown text."""
     if text.startswith("---"):
         end = text.find("\n---", 3)
         if end != -1:
-            return text[end + 4:].lstrip("\n")
+            return text[end + 4 :].lstrip("\n")
     return text
 
 
@@ -185,12 +206,13 @@ def run_agent(agent_type, task, project, force_accept_project=False):
         # Rate limited — retry with exponential backoff
         backoff = INITIAL_BACKOFF_SECONDS * (2 ** (attempt - 1))
         if attempt < MAX_RETRIES:
-            print(f"  Rate limited (attempt {attempt}/{MAX_RETRIES}), "
-                  f"retrying in {backoff}s...")
+            print(
+                f"  Rate limited (attempt {attempt}/{MAX_RETRIES}), "
+                f"retrying in {backoff}s..."
+            )
             time.sleep(backoff)
         else:
-            print(f"  Rate limited (attempt {attempt}/{MAX_RETRIES}), "
-                  f"giving up.")
+            print(f"  Rate limited (attempt {attempt}/{MAX_RETRIES}), giving up.")
 
     return result.returncode
 

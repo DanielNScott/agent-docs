@@ -35,20 +35,17 @@ def compare_trees(old_map, new_map):
             new_defs = new_files.get(filename, [])
 
             if filename not in old_files:
-                status = 'added'
-                definitions = [{'sig': sig, 'status': 'added'} for sig in new_defs]
+                status = "added"
+                definitions = [{"sig": sig, "status": "added"} for sig in new_defs]
             elif filename not in new_files:
-                status = 'removed'
-                definitions = [{'sig': sig, 'status': 'removed'} for sig in old_defs]
+                status = "removed"
+                definitions = [{"sig": sig, "status": "removed"} for sig in old_defs]
             else:
                 definitions = _compare_definitions(old_defs, new_defs)
-                has_changes = any(d['status'] != 'unchanged' for d in definitions)
-                status = 'changed' if has_changes else 'unchanged'
+                has_changes = any(d["status"] != "unchanged" for d in definitions)
+                status = "changed" if has_changes else "unchanged"
 
-            diff[module][filename] = {
-                'status': status,
-                'definitions': definitions
-            }
+            diff[module][filename] = {"status": status, "definitions": definitions}
 
     return diff
 
@@ -59,26 +56,31 @@ def _compare_definitions(old_defs, new_defs):
     old_names = {_extract_name(sig): sig for sig in old_defs}
     new_names = {_extract_name(sig): sig for sig in new_defs}
 
-    all_names = list(old_names.keys()) + [n for n in new_names.keys() if n not in old_names]
+    all_names = list(old_names.keys()) + [
+        n for n in new_names.keys() if n not in old_names
+    ]
 
     for name in all_names:
         old_sig = old_names.get(name)
         new_sig = new_names.get(name)
 
         if old_sig is None:
-            result.append({'sig': new_sig, 'status': 'added'})
+            result.append({"sig": new_sig, "status": "added"})
         elif new_sig is None:
-            result.append({'sig': old_sig, 'status': 'removed'})
+            result.append({"sig": old_sig, "status": "removed"})
         elif old_sig != new_sig:
-            result.append({'sig': new_sig, 'old_sig': old_sig, 'status': 'changed'})
+            result.append({"sig": new_sig, "old_sig": old_sig, "status": "changed"})
         else:
-            result.append({'sig': old_sig, 'status': 'unchanged'})
+            result.append({"sig": old_sig, "status": "unchanged"})
 
     return result
 
 
 def _extract_name(signature):
-    """Extract function/class name from a signature string ('name(...)' or 'class name')."""
-    if signature.startswith('class '):
-        return signature[6:]
-    return signature.split('(')[0]
+    """Extract function/class name from a signature string."""
+    if signature.startswith("class "):
+        # Handle 'class Foo' and 'class Foo(Bar, Baz)'
+        rest = signature[6:]
+        paren = rest.find("(")
+        return rest[:paren] if paren != -1 else rest
+    return signature.split("(")[0]

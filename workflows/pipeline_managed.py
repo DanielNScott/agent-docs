@@ -7,8 +7,14 @@ and the manager reviews between rounds.
 
 import argparse
 import re
-from claude_runner import (run_agent, find_latest_report, get_ids_from_report,
-                           archive_reports, WORKSPACE_DIR)
+from claude_runner import (
+    run_agent,
+    find_latest_report,
+    get_ids_from_report,
+    get_verdict,
+    archive_reports,
+    WORKSPACE_DIR,
+)
 
 MAX_UNITS = 10
 
@@ -19,34 +25,26 @@ def get_taskplan_path(project):
 
 # Report parsing
 
+
 def get_unit_body(path, unit_id):
     """Extract full text body of a specific unit from taskplan.md."""
     text = path.read_text()
-    pattern = rf'^(##\s+Unit\s+{unit_id}:.+?)(?=^##\s+Unit\s+\d+:|\Z)'
+    pattern = rf"^(##\s+Unit\s+{unit_id}:.+?)(?=^##\s+Unit\s+\d+:|\Z)"
     match = re.search(pattern, text, re.MULTILINE | re.DOTALL)
     if match:
         return match.group(1).strip()
     return None
 
 
-def get_verdict(report_path):
-    """Extract verdict (proceed/adjust/done) from manager review report."""
-    text = report_path.read_text()
-    match = re.search(r'^##\s+Verdict\s*\n\s*(proceed|adjust|done)', text, re.MULTILINE)
-    if match:
-        return match.group(1)
-    return None
-
-
 def extract_task_summary(report_path):
     """Extract first sentence of Task section from iterative report."""
     text = report_path.read_text()
-    match = re.search(r'^# Task\s*\n+(.+)', text, re.MULTILINE)
+    match = re.search(r"^# Task\s*\n+(.+)", text, re.MULTILINE)
     if match:
         sentence = match.group(1).strip()
-        dot = sentence.find('.')
+        dot = sentence.find(".")
         if dot > 0:
-            return sentence[:dot + 1]
+            return sentence[: dot + 1]
         return sentence[:100]
     return "completed"
 
@@ -66,6 +64,7 @@ def build_unit_task(project, unit_id, prior_summaries):
 
 
 # Pipeline stages
+
 
 def run_scope(project, task):
     """Run manager agent to scope the task into work units."""
@@ -91,10 +90,13 @@ def run_review(project, unit_id):
         report_ref = f"/workspace/reports/{iterdev_report.name}"
 
     print(f"=== Running Manager: Review Unit {unit_id} ===")
-    return run_agent("agent-manager", f"mode=review, unit={unit_id}, report={report_ref}", project)
+    return run_agent(
+        "agent-manager", f"mode=review, unit={unit_id}, report={report_ref}", project
+    )
 
 
 # Pipeline execution
+
 
 def run_pipeline(project, task):
     """Execute the full managed iteration pipeline."""
@@ -114,7 +116,6 @@ def run_pipeline(project, task):
     units_processed = 0
 
     while units_processed < MAX_UNITS:
-
         # Re-read unit IDs each iteration (manager may have adjusted them)
         all_unit_ids = get_ids_from_report(taskplan_path, prefix="Unit")
         processed_ids = {uid for uid, _ in prior_summaries}
@@ -179,15 +180,19 @@ Pipeline stages:
      a. Iterative agent implements the unit
      b. Manager reviews, decides: proceed / adjust / done
   3. Repeat until done or all units complete
-"""
+""",
     )
 
-    parser.add_argument("--project", required=True, help="Project name (workspace subdirectory)")
+    parser.add_argument(
+        "--project", required=True, help="Project name (workspace subdirectory)"
+    )
     parser.add_argument("--task", required=True, help="Development task description")
-    parser.add_argument("--only-scope", action="store_true",
-                        help="Run only scoping (no implementation)")
-    parser.add_argument("--restart", action="store_true",
-                        help="Archive old reports before starting")
+    parser.add_argument(
+        "--only-scope", action="store_true", help="Run only scoping (no implementation)"
+    )
+    parser.add_argument(
+        "--restart", action="store_true", help="Archive old reports before starting"
+    )
 
     args = parser.parse_args()
 
